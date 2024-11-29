@@ -1,0 +1,183 @@
+---
+title: "Cosine baseline - unsupervised"
+---
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+```
+
+# Read profile cosine similarities
+
+```{r}
+sim_df <- arrow::read_parquet("output/standard_experiments_sim.parquet")
+```
+
+
+```{r}
+# keep Metadata_genes2 because it will be used when creating CRISPR consensus
+sim_df <-
+  sim_df %>%
+  select(Metadata_broad_sample1,
+         Metadata_broad_sample2,
+         Metadata_genes2,
+         sim) 
+```
+
+# Read transformer predictions 
+
+We don't care about the predictions themselves; we just want the scaffolding so 
+that we can fill in the predictions
+
+```{r}
+formulation_features_transformer <-
+  read_csv(
+    "input/formulation_features_transformer.csv",
+    col_types = cols(.default = col_character())
+  )
+
+prediction_df <-
+  pmap_dfr(formulation_features_transformer,
+           function(classifier, formulation, features) {
+             prediction_dfi <-
+               read_csv(
+                 glue(
+                   "../1.analysis/final_binary_predictions/{classifier}__{formulation}__{features}.csv"
+                 ),
+                 col_types = cols()
+               )
+             
+             prediction_dfi %>%
+               mutate(formulation = formulation,
+                      features = features)
+             
+           })
+
+prediction_df <-
+  prediction_df %>%
+  select(
+    formulation,
+    features,
+    Metadata_broad_sample_Compound,
+    Metadata_broad_sample_CRISPR,
+    Metadata_broad_sample_ORF,
+    y_actual
+  )
+```
+
+Estimate positive fraction (prior)
+
+```{r}
+y_pos_frac <-
+  prediction_df %>%
+  group_by(formulation, features) %>%
+  count(y_actual) %>%
+  pivot_wider(names_from = "y_actual",
+              values_from = "n",
+              names_prefix = "y_actual_") %>%
+  mutate(y_pos_frac = y_actual_1 / y_actual_0) %>%
+  ungroup() %>%
+  summarize(y_pos_frac = mean(y_pos_frac)) %>%
+  extract2("y_pos_frac")
+
+prediction_df0 <- prediction_df
+```
+
+# Predict gene-compound match using cosine
+
+```{r}
+prediction_df <-
+  prediction_df %>%
+  left_join(
+    sim_df,
+    by = c(
+      "Metadata_broad_sample_Compound" = "Metadata_broad_sample1",
+      "Metadata_broad_sample_CRISPR" = "Metadata_broad_sample2"
+    )
+  ) %>%
+  mutate(y_prob_crispr = abs(sim)) %>%
+  select(-sim) %>%
+  left_join(
+    # We don't need Metadata_genes2 for ORFs; it's only needed for CRISPR 
+    # when we later compute CRISPR consensus
+    sim_df %>% select(-Metadata_genes2),
+    by = c(
+      "Metadata_broad_sample_Compound" = "Metadata_broad_sample1",
+      "Metadata_broad_sample_ORF" = "Metadata_broad_sample2"
+    )
+  ) %>%
+  mutate(y_prob_orf = abs(sim)) %>%
+  select(-sim) %>%
+  mutate(y_prob = 
+           case_when(
+             is.na(y_prob_orf) ~ y_prob_crispr,
+             is.na(y_prob_crispr) ~ y_prob_orf,
+             TRUE ~ (y_prob_orf + y_prob_crispr) / 2
+           )) %>%
+  select(-y_prob_orf, -y_prob_crispr)
+
+# y_pred is never used in the notebooks that follow but I am creating it because
+# it is present in the transformer prediction CSVs
+
+y_pos_frac_thresh <- quantile(prediction_df$y_prob, 1 - y_pos_frac, names = FALSE)
+
+prediction_df <-
+  prediction_df %>%
+  mutate(y_pred = 1.0 * (y_prob > y_pos_frac_thresh))
+
+stopifnot(compare::compare(
+  prediction_df0,
+  prediction_df %>%
+    select(
+      formulation,
+      features,
+      Metadata_broad_sample_Compound,
+      Metadata_broad_sample_CRISPR,
+      Metadata_broad_sample_ORF,
+      y_actual
+    ),
+  allowAll = TRUE
+)$result)
+
+rm("prediction_df0")
+```
+
+## Compute CRISPR consensus predictions
+
+```{r}
+source("predict_crispr_consensus.R")
+```
+
+```{r}
+prediction_df_crispr_consensus <- predict_crispr_consensus(prediction_df, y_pos_frac_thresh)
+```
+
+# Save predictions
+
+```{r}
+prediction_df <-
+  prediction_df %>%
+  select(-Metadata_genes2)
+```
+
+```{r}
+write_predictions <- function(df) {
+  df %>%
+    group_by(formulation, features) %>%
+    group_walk( ~ write_csv(.x,
+                            with(
+                              .y,
+                              glue(
+                                "../1.analysis/final_binary_predictions/cosine__{formulation}__{features}.csv"
+                              )
+                            )))
+}
+
+write_predictions(prediction_df)
+
+write_predictions(prediction_df_crispr_consensus)
+```
+

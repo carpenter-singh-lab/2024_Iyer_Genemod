@@ -1,0 +1,621 @@
+---
+title: "Inspect JUMP-Target metadata and update gene-compound connections"
+---
+
+(From here <https://github.com/jump-cellpainting/JUMP-Target/issues/8#issuecomment-756712175>):
+
+We use additional target annotations available from clue.io/repurposing to produce
+
+1. An expanded set of target annotations: `output/JUMP-Target_compound_metadata_all_targets.csv`, 
+along with two different versions of the same information that are easier to browse:  `output/JUMP-Target_compound_metadata_all_targets_per_compound.csv` and `output/JUMP-Target_compound_metadata_all_targets_per_target.csv`
+2. An expanded set of connections between ORFs, CRISPRs, and compounds: `output/JUMP-Target_compounds_crispr_orf_connections.csv`, along with different 
+version of the same information, stored as a gene x compound matrix: 
+`output/JUMP-Target_gene_compound_matrix.csv`
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+```
+
+# Read data
+
+## Internal data
+
+```{r}
+drug_target_samples <-
+  read_csv(
+    "input/drug_target_samples.csv",
+    col_types =  cols(
+      pert_iname = col_character(),
+      target = col_character(),
+      broad_id = col_character()
+    )
+  ) %>%
+  mutate(pert_id = str_sub(broad_id, 1, 13)) %>%
+  rename(broad_sample = broad_id)
+```
+
+## External data
+
+```{r}
+commit <- "534520eb755ba374b2e1cd9ded2bc00050da93b6"
+path <- glue("https://raw.githubusercontent.com/jump-cellpainting/JUMP-Target/{commit}")
+```
+
+Compounds
+
+```{r}
+compound_metadata <-
+  read_tsv(
+    glue("{path}/JUMP-Target-1_compound_metadata.tsv"),
+    col_types = cols(
+      broad_sample = col_character(),
+      InChIKey = col_character(),
+      pert_iname = col_character(),
+      pubchem_cid = col_double(),
+      target = col_character(),
+      pert_type = col_character(),
+      control_type = col_character(),
+      smiles = col_character()
+    )
+  ) %>%
+  mutate(pert_id = str_sub(broad_sample, 1, 13))
+```
+
+ORFs
+
+```{r}
+orf_metadata <-
+  read_tsv(
+    glue("{path}/JUMP-Target-1_orf_metadata.tsv"),
+    col_types = cols(
+      broad_sample = col_character(),
+      gene = col_character(),
+      pert_type = col_character(),
+      control_type = col_character()
+    )
+  )
+```
+
+CRISPRs
+
+```{r}
+crispr_metadata <-
+  read_tsv(
+    glue("{path}/JUMP-Target-1_crispr_metadata.tsv"),
+    col_types = cols(
+      broad_sample = col_character(),
+      gene = col_character(),
+      pert_type = col_character(),
+      control_type = col_character(),
+      target_sequence = col_character(),
+      negcon_control_type = col_character()
+    )
+  )
+```
+
+# Inspect and update metadata
+
+## Drugs
+
+```{r}
+compound_pert_iname <- 
+  compound_metadata %>% 
+  select(pert_iname) %>%
+  mutate(pert_iname = str_split(pert_iname, "\\|")) %>%
+  unnest(cols = c(pert_iname)) %>%
+  mutate(pert_iname = str_trim(pert_iname)) %>%
+  distinct()
+```
+
+Number of unique `pert_iname`s
+
+```{r}
+compound_pert_iname %>%
+  anti_join(data.frame(pert_iname = "DMSO")) %>%
+  count() 
+```
+
+Create a complete mapping between `pert_id`s and `pert_iname`s for compounds, 
+using `drug_target_samples` i.e. get all possible `pert_id` for a given
+`pert_iname`.
+
+```{r}
+compound_pert_iname_pert_id <- 
+  compound_pert_iname %>%
+  distinct(pert_iname) %>%
+  inner_join(drug_target_samples %>% 
+               distinct(pert_id, pert_iname)) %>%
+  distinct()
+```
+
+Number of pert_id-pert_iname pairs
+
+```{r}
+compound_pert_iname_pert_id %>%
+  count()
+```
+
+`pert_id`s with multiple `pert_iname`s in the complete mapping
+
+```{r}
+compound_pert_iname_pert_id %>%
+  add_count(pert_id) %>% 
+  filter(n > 1)
+```
+
+`pert_iname`s with multiple `pert_id`s in the complete mapping
+
+```{r rows.print=25}
+compound_pert_iname_pert_id %>%
+  add_count(pert_iname) %>% 
+  filter(n > 1)
+```
+
+`pert_iname`s with multiple `pert_id`s in `JUMP-Target-1`
+
+```{r rows.print=25}
+compound_pert_iname_pert_id %>%
+  inner_join(compound_metadata %>% distinct(pert_id)) %>%
+  add_count(pert_iname) %>% 
+  filter(n > 1)
+```
+
+As discussed here https://github.com/jump-cellpainting/JUMP-Target/issues/9#issuecomment-830667015
+we will treat these as biological replicates.
+
+So in all, we have these many unique compounds in the dataset, as far as training
+models goes:
+
+```{r}
+compound_pert_iname %>%
+  anti_join(data.frame(pert_iname = "DMSO")) %>%
+  count() 
+```
+
+### Get full list of targets
+
+List all genes present in the ORFs / CRISPRs in `JUMP-Target-1`
+
+```{r}
+jump_target_genes <- 
+  bind_rows(
+    crispr_metadata %>% distinct(gene),
+    orf_metadata %>% distinct(gene),
+  ) %>% 
+  distinct(gene) %>%
+  na.omit()
+```
+
+
+```{r}
+jump_target_genes %>%
+  count()
+```
+
+List compound `pert_id`s present in `JUMP-Target-1`
+
+```{r}
+jump_target_compound_pert_id <- 
+  compound_metadata %>% 
+  distinct(pert_id, pert_iname) %>%
+  na.omit()
+```
+
+
+```{r}
+jump_target_compound_pert_id %>%
+  count()
+```
+
+Get `(pert_id, pert_iname, target)` map 
+
+```{r}
+compound_full_targets <-
+  bind_rows(
+    inner_join(
+      compound_pert_iname_pert_id,
+      drug_target_samples %>%
+        distinct(pert_id, target),
+      by = "pert_id"
+    ),
+    inner_join(
+      compound_pert_iname_pert_id,
+      drug_target_samples %>%
+        distinct(pert_iname, target),
+      by = "pert_iname"
+    )
+  ) %>%
+  distinct(pert_id, pert_iname, target)
+```
+
+
+```{r}
+compound_full_targets <-
+  bind_rows(compound_full_targets,
+            compound_metadata %>%
+              distinct(pert_id, pert_iname, target)) %>%
+  distinct(pert_id, pert_iname, target)
+```
+
+Drop targets not present in `JUMP-Target-1` ORFs/CRISPRs
+
+```{r}
+compound_full_targets <-
+  compound_full_targets %>%
+  inner_join(jump_target_genes, by = c("target" = "gene"))
+```
+
+Drop `pert_id`s not present in `JUMP-Target-1` Compounds
+
+```{r rows.print=20}
+compound_full_targets %>%
+  anti_join(jump_target_compound_pert_id) %>%
+  arrange(pert_iname)
+```
+
+
+```{r}
+compound_full_targets <-
+  compound_full_targets %>%
+  distinct(pert_iname, target) %>%
+  inner_join(jump_target_compound_pert_id, by = "pert_iname")
+```
+
+
+```{r}
+compound_full_targets %>%
+  count()
+```
+```{r}
+compound_full_targets %>%
+  distinct(pert_id, target) %>%
+  count()
+```
+
+
+```{r}
+compound_full_targets %>%
+  distinct(pert_iname, target) %>%
+  count()
+```
+
+```{r}
+compound_full_targets %>%
+  distinct(target) %>%
+  count()
+```
+We investigate why this is not exactly 160, later.
+
+```{r}
+set.seed(42)
+compound_full_targets %>% sample_n(20)
+```
+
+
+### Probe full list of targets
+
+```{r}
+compound_full_targets %>%
+  distinct(pert_iname) %>%
+  count()
+```
+
+
+```{r}
+compound_full_targets %>%
+  distinct(pert_id) %>%
+  count()
+```
+
+
+```{r}
+compound_full_targets %>%
+  distinct(pert_iname, pert_id) %>%
+  count()
+```
+
+
+```{r}
+pert_id_pert_name_counts <- 
+  compound_full_targets %>%
+  distinct(pert_iname, pert_id) %>%
+  add_count(pert_iname, name = "n_pert_iname")  %>%
+  add_count(pert_id, name = "n_pert_id")
+```
+
+The compounds have the same name but different `pert_id`s. 
+There are different reasons for why this can be the case, but we should treat 
+them, essentially, as replicates when training predictive models.
+
+```{r}
+pert_id_pert_name_counts %>% 
+  filter((n_pert_iname > 1) | (n_pert_id > 1)) %>%
+  arrange(n_pert_iname, pert_iname, n_pert_id, pert_id)
+```
+
+### Save full list of targets
+
+```{r}
+compound_full_targets %>%
+  select(pert_iname, pert_id, target) %>%
+  arrange(pert_iname, target) %>%
+  write_csv("output/JUMP-Target_compound_metadata_all_targets.csv")
+```
+
+```{r}
+read_csv("output/JUMP-Target_compound_metadata_all_targets.csv", col_types = cols()) %>%
+  arrange(pert_iname, target) %>%
+  group_by(pert_iname) %>%
+  summarize(target = paste0(target, collapse = "|")) %>%
+  write_csv("output/JUMP-Target_compound_metadata_all_targets_per_compound.csv")
+  
+read_csv("output/JUMP-Target_compound_metadata_all_targets.csv", col_types = cols()) %>%
+  arrange(target, pert_iname) %>%
+  group_by(target) %>%
+  summarize(pert_iname = paste0(pert_iname, collapse = "|")) %>%
+  write_csv("output/JUMP-Target_compound_metadata_all_targets_per_target.csv")
+```
+
+
+## Connections among genes and compounds
+
+Get the dictionaries
+
+```{r}
+compound_metadata_x <- 
+  compound_full_targets %>% 
+  distinct(pert_id, pert_iname, target) %>% 
+  select(pert_id_compound = pert_id, pert_iname_compound = pert_iname, gene = target)
+
+orf_metadata_x <- 
+  orf_metadata %>% 
+  distinct(broad_sample, gene) %>% 
+  select(broad_sample_orf = broad_sample, gene)
+
+crispr_metadata_x <- 
+  crispr_metadata %>% 
+  distinct(broad_sample, gene) %>% 
+  select(broad_sample_crispr = broad_sample, gene) %>% 
+  na.omit()
+```
+
+### Get connections
+
+```{r}
+connections <-
+  compound_metadata_x %>% 
+  inner_join(orf_metadata_x, by = "gene") %>% 
+  inner_join(crispr_metadata_x, by = "gene") %>%
+  select(gene, pert_iname_compound, pert_id_compound, broad_sample_orf, broad_sample_crispr)
+```
+
+### Probe connection
+
+#### Number of genes
+
+```{r}
+connections %>%
+  distinct(gene) %>%
+  count
+```
+
+```{r}
+compound_full_targets %>%
+  distinct(target) %>%
+  count()
+```
+
+What's the difference?
+
+```{r}
+extra_genes <- 
+  compound_full_targets %>%
+  distinct(target) %>% 
+  anti_join(connections %>% distinct(gene), by = c("target" = "gene"))
+```
+
+These are gene(s) that were included as ORF negcons, and so there are
+no corresponding CRISPR guides targeting them.
+
+```{r}
+compound_full_targets %>% inner_join(extra_genes)
+
+crispr_metadata %>% inner_join(extra_genes, by = c("gene" = "target"))
+
+orf_metadata %>% inner_join(extra_genes, by = c("gene" = "target"))
+```
+
+These genes below have CRISPRs / ORFs but not compounds targeting them
+(these are all the so-called ORF negcons)
+
+```{r}
+jump_target_genes %>% 
+  anti_join(connections %>% distinct(gene)) %>%
+  left_join(orf_metadata)
+```
+
+#### Number of compound-ORF combinations
+
+Counting compounds with different `pert_id`s separately
+
+```{r}
+connections %>%
+  distinct(pert_iname_compound, pert_id_compound, broad_sample_orf) %>%
+  count
+```
+NOT counting compounds with different `pert_id`s separately; this is the right 
+way to do it for the application at hand i.e. training models that can predict 
+gene-compound matches.
+
+```{r}
+connections %>%
+  distinct(pert_iname_compound, broad_sample_orf) %>%
+  count
+```
+#### Number of compound-CRISPR combinations
+
+Counting compounds with different `pert_id`s separately
+
+```{r}
+connections %>%
+  distinct(pert_iname_compound, pert_id_compound, broad_sample_crispr) %>%
+  count
+```
+
+NOT counting compounds with different `pert_id`s separately; this is the right way to do it.
+
+```{r}
+connections %>%
+  distinct(pert_iname_compound, broad_sample_crispr) %>%
+  count
+```
+
+#### Number of CRISPR-ORF combinations
+
+```{r}
+connections %>%
+  distinct(broad_sample_orf, broad_sample_crispr) %>%
+  count
+```
+
+#### Number of Gene-Compound combinations
+
+Counting compounds with different `pert_id`s separately
+
+```{r}
+connections %>%
+  distinct(pert_id_compound, pert_iname_compound, gene) %>%
+  count
+```
+
+NOT counting compounds with different `pert_id`s separately; this is the right way to do it.
+
+```{r}
+connections %>%
+  distinct(pert_iname_compound, gene) %>%
+  count
+```
+
+#### Number of  CRISPR-ORF-Compound combinations
+
+
+```{r}
+connections %>%
+  count
+```
+
+```{r}
+connections %>%
+  distinct() %>%
+  count
+```
+
+Counting compounds with different `pert_id`s separately
+
+```{r}
+connections %>%
+  distinct(across(-all_of("pert_iname_compound"))) %>%
+  count
+```
+
+NOT counting compounds with different `pert_id`s separately; this is the right way to do it.
+
+```{r}
+connections %>%
+  distinct(across(-all_of("pert_id_compound"))) %>%
+  count
+```
+
+#### Tabulation of number of compounds targeting genes (ORF)
+
+`n_orfs` have `n_compounds` targeting them
+
+Counting compounds with different `pert_id`s separately
+
+```{r}
+connections %>%
+  distinct(pert_id_compound, broad_sample_orf) %>%
+  group_by(broad_sample_orf) %>%
+  tally(name = "n_compounds") %>% 
+  group_by(n_compounds) %>%
+  tally(name = "n_orfs") %>%
+  select(n_orfs, n_compounds) %>%
+  arrange(desc(n_orfs))
+```
+
+NOT counting compounds with different `pert_id`s separately; this is the right way to do it.
+
+```{r}
+connections %>%
+  distinct(pert_iname_compound, broad_sample_orf) %>%
+  group_by(broad_sample_orf) %>%
+  tally(name = "n_compounds") %>% 
+  group_by(n_compounds) %>%
+  tally(name = "n_orfs") %>%
+  select(n_orfs, n_compounds) %>%
+  arrange(desc(n_orfs))
+```
+
+
+#### Tabulation of number of compounds targeting genes (CRISPR)
+
+`n_crisprs` have `n_compounds` targeting them
+
+Counting compounds with different `pert_id`s separately
+
+```{r}
+connections %>%
+  distinct(pert_id_compound, broad_sample_crispr) %>%
+  group_by(broad_sample_crispr) %>%
+  tally(name = "n_compounds") %>% 
+  group_by(n_compounds) %>%
+  tally(name = "n_crisprs") %>%
+  select(n_crisprs, n_compounds) %>%
+  arrange(desc(n_crisprs))
+```
+
+NOT counting compounds with different `pert_id`s separately; this is the right way to do it.
+
+```{r}
+connections %>%
+  distinct(pert_iname_compound, broad_sample_crispr) %>%
+  group_by(broad_sample_crispr) %>%
+  tally(name = "n_compounds") %>% 
+  group_by(n_compounds) %>%
+  tally(name = "n_crisprs") %>%
+  select(n_crisprs, n_compounds) %>%
+  arrange(desc(n_crisprs))
+```
+
+### Save connections
+
+```{r}
+connections %>%
+  arrange(gene, pert_iname_compound) %>%
+  write_csv("output/JUMP-Target_compounds_crispr_orf_connections.csv")
+```
+
+```{r}
+inner_join(
+  connections %>%
+    distinct(pert_iname_compound) %>%
+    mutate(dummy = 1),
+  connections %>%
+    distinct(gene) %>%
+    mutate(dummy = 1)
+) %>%
+  left_join(connections %>%
+              distinct(gene, pert_iname_compound) %>%
+              mutate(is_connected = 1)) %>%
+  mutate(is_connected = replace_na(is_connected, 0)) %>%
+  select(-dummy) %>%
+  arrange(pert_iname_compound, gene) %>%
+  pivot_wider(names_from = "gene", values_from = "is_connected") %>%
+  write_tsv("output/JUMP-Target_gene_compound_matrix.txt")
+```
+

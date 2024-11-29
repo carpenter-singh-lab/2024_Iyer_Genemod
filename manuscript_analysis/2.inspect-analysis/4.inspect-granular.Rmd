@@ -1,0 +1,711 @@
+---
+title: "Inspect granular"
+params:
+  percentile_threshold: 0.02
+---
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+set.seed(42)
+```
+
+
+```{r}
+palette_manual_dark_2 <- c("#1B9E77", "#D95F02", "#E6AB02", "#7570B3")
+```
+
+# Read
+
+```{r message=FALSE}
+prediction_metrics_at_k_abs_compound <-
+  read_csv("output/prediction_metrics_at_k_abs_compound.csv", show_col_types = FALSE)
+
+prediction_metrics_at_k_abs_gene <-
+  read_csv("output/prediction_metrics_at_k_abs_gene.csv", show_col_types = FALSE)
+
+prediction_df <-
+  read_csv("output/prediction_df.csv.gz", show_col_types = FALSE)
+```
+
+Report positive prevalance and use that to set `params$percentile_threshold`
+
+(Set it to 2x of `pp_median` i.e. twice the number of hits)
+
+```{r}
+prediction_df %>%
+  filter(classifier %in% c("transformer", "transformerx")) %>%
+  mutate(y_actual = y_actual == 1) %>%
+  group_by(classifier, formulation, features, y_actual) %>%
+  count() %>%
+  pivot_wider(names_from = "y_actual",
+              names_prefix = "y_actual_",
+              values_from = "n") %>%
+  mutate(pp = y_actual_TRUE / (y_actual_TRUE + y_actual_FALSE)) %>%
+  ungroup() %>%
+  summarise(across(c("pp"), c(
+    median = median, min = min, max = max
+  )))
+```
+
+
+```{r}
+prediction_metrics_at_k_abs_compound %>% slice_sample(n = 10)
+prediction_metrics_at_k_abs_gene %>% slice_sample(n = 10)
+prediction_df %>% slice_sample(n = 10)
+```
+
+# Process
+
+## Predictions
+
+Calculate these:
+
+- `gene_rank`: the rank of the gene, in the ranked list of similarities of all genes to the compound
+- `compound_rank`: the rank of the compound, in the ranked list of similarities of all compounds to the gene
+- `gene_pct`: `gene_rank` as a percentile
+- `compound_pct`: `compound_rank` as a percentile
+- `gene_compound_global_rank`: the percentile of `y_prob` for that classifier-feature-formulation
+- `gene_compound_local_pct`: (`gene_pct` +  `compound_pct`)/2
+
+```{r}
+prediction_df <-
+  prediction_df %>%
+  arrange(classifier, formulation, features, pert_iname_compound, desc(y_prob)) %>%
+  group_by(classifier, formulation, features, pert_iname_compound) %>%
+  mutate(gene_rank = row_number(-y_prob)) %>%
+  mutate(gene_pct = gene_rank / n()) %>%
+  ungroup() %>%
+  arrange(classifier, formulation, features, gene, desc(y_prob)) %>%
+  group_by(classifier, formulation, features, gene) %>%
+  mutate(compound_rank = row_number(-y_prob)) %>%
+  mutate(compound_pct = compound_rank / n()) %>%
+  ungroup() %>%
+  group_by(classifier, formulation, features) %>%
+  mutate(gene_compound_global_rank = row_number(-y_prob)) %>%
+  mutate(gene_compound_global_pct = gene_compound_global_rank / n()) %>%
+  ungroup() %>%
+  mutate(gene_compound_local_pct = (gene_pct + compound_pct) / 2)
+```
+
+```{r}
+prediction_df %>%
+  write_csv("output/prediction_df_augmented.csv.gz")
+```
+
+## Splits
+
+Get data splits for the configuration
+
+```{r message=FALSE}
+splits <-
+  prediction_df %>%
+  distinct(classifier, formulation, features) %>%
+  arrange(classifier, formulation, features) %>%
+  pmap_dfr(function(classifier, formulation, features) {
+    config <- tibble(classifier, formulation, features)
+
+    config_trim <-
+      config %>%
+      mutate(features = str_remove_all(features, "__max_consensus")) %>%
+      mutate(features = str_remove_all(features, "__consensus"))
+
+    read_csv(with(
+      config_trim,
+      glue("output/splits__{formulation}__{features}.csv.gz")
+    ),
+    show_col_types = FALSE) %>%
+      #filter(is_connected) %>%
+      inner_join(config, by = character())
+
+  }) %>%
+  arrange(classifier, formulation, features, gene, pert_iname_compound)
+```
+
+
+```{r}
+splits %>%
+  write_csv("output/splits_collated.csv.gz")
+```
+
+
+```{r message=FALSE}
+splits %>% slice_sample(n = 10)
+```
+
+
+```{r}
+splits %>%
+  filter(classifier %in% c("transformer", "transformerx") &
+           formulation == "pair" &
+           features == "orf") %>%
+  distinct(split_set, gene) %>%
+  count(split_set)
+
+splits %>%
+  filter(classifier %in% c("transformer", "transformerx") &
+           formulation == "pair" &
+           features == "orf") %>%
+  distinct(split_set, pert_iname_compound) %>%
+  count(split_set)
+```
+
+Get counts
+
+`n_connected_compounds_train`: Number of compounds to which the gene (from the test set) is connected in the training set
+
+```{r}
+gene_train_count <-
+  splits %>%
+  filter(split_set == "test") %>%
+  distinct(classifier, formulation, features, gene) %>%
+  left_join(
+    splits %>%
+      filter(split_set == "train") %>%
+      mutate(
+        is_connected = as.factor(is_connected),
+        gene = as.factor(gene)
+      ) %>%
+      group_by(
+        classifier,
+        formulation,
+        features,
+        gene,
+        is_connected,
+        .drop = FALSE
+      ) %>%
+      summarise(n_connected_compounds_train = n(),
+                connected_compounds_train =
+                         paste0(pert_iname_compound, collapse = "|"),
+                .groups = "keep") %>%
+      mutate(is_connected = as.logical(is_connected)),
+    by = c("classifier", "formulation", "features", "gene")
+  ) %>%
+  mutate(n_connected_compounds_train = replace_na(n_connected_compounds_train, 0),
+         connected_compounds_train =
+           case_when(
+             is_connected ~ connected_compounds_train,
+             TRUE ~ ""
+           ))
+
+gene_train_count %>% slice_sample(n = 5)
+```
+
+All genes should have two sets of counts (for `is_connected` == `TRUE` and `is_connected` == `FALSE`)
+
+```{r}
+gene_train_count %>% count(classifier, formulation, features, gene) %>% filter(n != 2)
+```
+
+
+```{r}
+gene_train_count %>%
+  count(classifier, formulation, features, n_connected_compounds_train, is_connected, name = "n_genes") %>%
+  select(classifier, formulation, features, n_genes, n_connected_compounds_train, is_connected) %>%
+  filter(classifier == "transformer" & is_connected) %>%
+  ggplot(aes(as.factor(n_connected_compounds_train), n_genes, fill = features)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~formulation) +
+  xlab("Number of compounds to which the gene (from the test set)\nis connected in the training set (TRUE connections)") +
+  ylab("Number of genes")
+```
+
+```{r}
+gene_train_count %>%
+  filter(classifier == "transformer" & !is_connected) %>%
+  ggplot(aes(n_connected_compounds_train, fill = features)) +
+  geom_histogram(position = "identity", alpha = 0.5, bins = 50) +
+  facet_wrap(~formulation, scales = "free") +
+  xlab("Number of compounds to which the gene (from the test set)\nis connected in the training set (FALSE connections)") +
+  ylab("Number of genes")
+```
+
+`n_connected_genes_train`: Number of genes to which the compound (from the test set) is connected in the training set
+
+```{r}
+compound_train_count <-
+  splits %>%
+  filter(split_set == "test") %>%
+  distinct(classifier, formulation, features, pert_iname_compound) %>%
+  left_join(
+    splits %>%
+      filter(split_set == "train")  %>%
+      mutate(
+        is_connected = as.factor(is_connected),
+        pert_iname_compound = as.factor(pert_iname_compound)
+      ) %>%
+      group_by(
+        classifier,
+        formulation,
+        features,
+        pert_iname_compound,
+        is_connected,
+        .drop = FALSE
+      ) %>%
+      summarize(n_connected_genes_train = n(),
+                connected_genes_train =
+                         paste0(gene, collapse = "|"),
+                .groups = "keep") %>%
+      mutate(is_connected = as.logical(is_connected))
+  ) %>%
+  mutate(n_connected_genes_train = replace_na(n_connected_genes_train, 0),
+         connected_genes_train =
+           case_when(
+             is_connected ~ connected_genes_train,
+             TRUE ~ ""
+           ))
+
+compound_train_count %>% slice_sample(n = 5)
+```
+
+
+```{r}
+compound_train_count %>%
+  count(classifier, formulation, features, n_connected_genes_train, is_connected, name = "n_compounds") %>%
+  select(classifier, formulation, features, n_compounds, n_connected_genes_train, is_connected) %>%
+  filter(classifier == "transformer" & is_connected) %>%
+  ggplot(aes(as.factor(n_connected_genes_train), n_compounds, fill = features)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~formulation) +
+  xlab("Number of genes to which the compound (from the test set)\nis connected in the training set (TRUE connections)") +
+  ylab("Number of compounds")
+```
+
+
+```{r}
+compound_train_count %>%
+  filter(classifier == "transformer" & !is_connected) %>%
+  ggplot(aes(n_connected_genes_train, fill = features)) +
+  geom_histogram(position = "identity", alpha = 0.5, bins = 50) +
+  facet_wrap(~formulation, scales = "free") +
+  xlab("Number of genes to which the compound (from the test set)\nis connected in the training set (FALSE connections)") +
+  ylab("Number of compounds")
+```
+
+## Bias
+
+For *positive* connections in the test set, report
+
+- `n_connected_compounds_train`: Number of compounds to which the gene connected, in the training set
+- `n_connected_genes_train`: Number of genes to which the compound is connected, in the training set
+- `gene_rank`: the rank of the gene, in the ranked list of similarities of all genes to the compound, in the training set
+- `compound_rank`: the rank of the compound, in the ranked list of similarities of all compounds to the gene, in the training set
+- `gene_pct`: `gene_rank` as a percentile
+- `compound_pct`: `gene_rank` as a percentile
+- `gene_compound_local_pct`: (`gene_pct` +  `compound_pct`)/2
+- `any_connected_train`: (`n_connected_genes_train` + `n_connected_compounds_train`) > 0
+- `which_connected_train`: is the gene or the compound, or both, present in the training set?
+
+```{r}
+training_bias <-
+  prediction_df %>%
+  filter(y_actual == 1) %>%
+  select(-y_actual) %>%
+  inner_join(
+    compound_train_count %>% filter(is_connected) %>% select(-is_connected),
+    by = c(
+      "classifier",
+      "formulation",
+      "features",
+      "pert_iname_compound"
+    )
+  ) %>%
+  inner_join(
+    gene_train_count %>% filter(is_connected) %>% select(-is_connected),
+    by = c(
+      "classifier",
+      "formulation",
+      "features",
+      "gene")
+  ) %>%
+  mutate(any_connected_train =
+           (n_connected_genes_train + n_connected_compounds_train) > 0) %>%
+  mutate(
+    which_connected_train =
+      case_when(
+        n_connected_genes_train == 0 &
+          n_connected_compounds_train == 0 ~ "neither",
+        n_connected_genes_train == 0 &
+          n_connected_compounds_train > 0 ~ "compound",
+        n_connected_genes_train > 0 &
+          n_connected_compounds_train == 0 ~ "gene",
+        n_connected_genes_train > 0 &
+          n_connected_compounds_train > 0 ~ "both"
+      )
+  ) %>%
+  arrange(formulation, features, classifier, pert_iname_compound, gene)
+```
+
+These values should be the same
+
+```{r}
+prediction_df %>%
+  filter(y_actual == 1) %>%
+  count()
+
+training_bias %>%
+  count()
+```
+
+The number of connections should be the same
+
+```{r}
+prediction_df %>%
+  filter(features != "compound") %>%
+  count(classifier, formulation, features, y_actual) %>%
+  pivot_wider(names_from = "classifier", values_from = "n") %>%
+  filter(cosine != transformer)
+```
+
+
+```{r}
+training_bias %>% slice_sample(n = 5)
+```
+
+```{r}
+training_bias %>%
+  write_csv("output/training_bias.csv")
+```
+
+# Inspect
+
+## Relationships among scores
+
+```{r}
+training_bias <-
+  training_bias %>%
+  filter(classifier %in% c("transformer", "transformerx", "cosine", "cosine1nn", "cosine5nn", "cosineavg")) %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg"))
+```
+
+Inspect relationship between `gene_compound_local_pct` and `y_prob`
+
+```{r}
+training_bias %>%
+  mutate(features = str_replace(features, "__", " ")) %>%
+  group_by(classifier, formulation, features) %>%
+  mutate(y_prob_rank = rank(y_prob),
+         gene_compound_local_pct_rank = rank(gene_compound_local_pct)) %>%
+  ggplot(aes(y_prob_rank, gene_compound_local_pct_rank, color = classifier)) +
+  geom_point(size = .5) +
+  facet_grid(features ~ formulation, labeller =  label_wrap_gen(multi_line = FALSE))
+```
+
+Inspect relationship between `gene_compound_local_pct` and `gene_compound_global_pct`
+
+```{r}
+training_bias %>%
+  mutate(features = str_replace(features, "__", " ")) %>%
+  group_by(classifier, formulation, features) %>%
+  mutate(gene_compound_global_pct_rank = rank(gene_compound_global_pct),
+         gene_compound_local_pct_rank = rank(gene_compound_local_pct)) %>%
+  ggplot(aes(gene_compound_global_pct_rank, gene_compound_local_pct_rank, color = classifier)) +
+  geom_point(size = .5) +
+  facet_grid(features ~ formulation, labeller =  label_wrap_gen(multi_line = FALSE))
+```
+
+Inspect relationship between `y_prob` and `gene_compound_global_pct`
+
+```{r}
+training_bias %>%
+  mutate(features = str_replace(features, "__", " ")) %>%
+  group_by(classifier, formulation, features) %>%
+  mutate(gene_compound_global_pct_rank = rank(gene_compound_global_pct),
+         y_prob_rank = rank(y_prob)) %>%
+  ggplot(aes(gene_compound_global_pct_rank, y_prob_rank, color = classifier)) +
+  geom_point(size = .5) +
+  facet_grid(features ~ formulation, labeller =  label_wrap_gen(multi_line = FALSE))
+```
+```{r}
+training_bias %>%
+  mutate(features = str_replace(features, "__", " ")) %>%
+  ggplot(aes(gene_compound_global_pct, y_prob, color = classifier)) +
+  geom_point(size = .5) +
+  facet_grid(features ~ formulation, labeller =  label_wrap_gen(multi_line = FALSE))
+```
+
+
+```{r}
+training_bias %>%
+  group_by(classifier, formulation, features) %>%
+  count()
+```
+
+## Counts of connection categories
+
+```{r}
+counts <-
+  training_bias %>%
+  filter(classifier == "transformer" & features == "orf") %>%
+  count(formulation, which_connected_train) %>%
+  arrange(formulation, desc(which_connected_train)) %>%
+  group_by(formulation) %>%
+  mutate(label_y = cumsum(n))
+
+p <-
+  counts %>%
+  ggplot(aes(formulation, n, fill = which_connected_train)) +
+  geom_col() +
+  geom_text(aes(label = n, y = label_y), vjust = 1.5) +
+  scale_fill_manual(values = palette_manual_dark_2) +
+  ylab("Number of true test set connections") +
+  ggtitle("Training bias: counts of true test set connections",
+          subtitle = "(based on ORF features, so only one connection for each gene-compound pair)")
+
+ggsave(
+  glue("output/training_bias_counts.png"),
+  p,
+  width = 7,
+  height = 5
+)
+
+print(p)
+```
+
+## Distribution of scores split by connection categories
+
+### Continuous
+
+```{r}
+plot_training_global_a <- function(classifier_, prediction_type_) {
+
+  if (prediction_type_ == "global_percentile") {
+    prediction_col <- sym("gene_compound_global_pct")
+    ylab_text <- "Connection percentile\n(test)"
+  } else if (prediction_type_ == "local_percentile") {
+    prediction_col <- sym("gene_compound_local_pct")
+    ylab_text <- "Average percentile of the connection\namong all gene-compound pairs\n(test)"
+  } else if (prediction_type_ == "prob") {
+    prediction_col <- sym("y_prob")
+    ylab_text <- "Predicted probability of \nthe connection being true\n(test)"
+  } else {
+    stop(glue("prediction_type {prediction_type_} unknown"))
+  }
+
+  p <-
+    training_bias %>%
+    filter(classifier == classifier_) %>%
+    ggplot(aes(features, !!prediction_col, fill = which_connected_train)) +
+    geom_dotplot(
+      binaxis = "y",
+      stackdir = "center",
+      dotsize = 1.5,
+      stroke = 0,
+      position = "dodge",
+      binpositions = "all",
+      stackgroups = TRUE,
+      binwidth = .01
+    ) +
+    labs(caption = "Each point is a true gene-compound connection (test)") +
+    ylab(ylab_text) +
+    theme(
+      plot.caption = element_text(face = "italic"),
+      axis.text.x = element_text(
+        angle = 90,
+        vjust = 0.5,
+        hjust = 1
+      ),
+      legend.position = "bottom"
+    ) +
+    scale_fill_manual(values = palette_manual_dark_2) +
+    facet_wrap( ~ formulation) +
+    guides(fill = guide_legend(title = "Gene or compound present in train\nin a true gene-compound connection")) +
+    ggtitle(glue("Training bias: {classifier_} : {prediction_type_}"),
+            subtitle = "Predictions are significantly worse if gene or compound was not seen in training\nin a true gene-compound connection (in supervised scenario)")
+
+  ggsave(
+    glue("output/training_bias_a_{prediction_type_}_{classifier_}.png"),
+    p,
+    width = 8,
+    height = 5
+  )
+
+  p
+}
+```
+
+
+```{r}
+plot_training_global_a("transformer", prediction_type_ = "global_percentile")
+plot_training_global_a("transformer", prediction_type_ = "local_percentile")
+plot_training_global_a("transformer", prediction_type_ = "prob")
+plot_training_global_a("transformerx", prediction_type_ = "global_percentile")
+plot_training_global_a("transformerx", prediction_type_ = "local_percentile")
+plot_training_global_a("transformerx", prediction_type_ = "prob")
+plot_training_global_a("cosine", prediction_type_ = "global_percentile")
+plot_training_global_a("cosine", prediction_type_ = "local_percentile")
+plot_training_global_a("cosine1nn", prediction_type_ = "global_percentile")
+plot_training_global_a("cosine1nn", prediction_type_ = "local_percentile")
+plot_training_global_a("cosine5nn", prediction_type_ = "global_percentile")
+plot_training_global_a("cosine5nn", prediction_type_ = "local_percentile")
+plot_training_global_a("cosineavg", prediction_type_ = "global_percentile")
+plot_training_global_a("cosineavg", prediction_type_ = "local_percentile")
+```
+
+### Thresholded
+
+```{r}
+training_bias_contingency <-
+  training_bias %>%
+  mutate(is_top_global_pct = as.factor(gene_compound_global_pct < params$percentile_threshold)) %>%
+  mutate(is_top_local_pct = as.factor(gene_compound_local_pct < params$percentile_threshold)) %>%
+  mutate(any_connected_train = as.factor(any_connected_train))
+
+training_bias_contingency_global <-
+  training_bias_contingency %>%
+  group_by(classifier, formulation, features, .drop = FALSE) %>%
+  count(any_connected_train, is_top_global_pct, .drop = FALSE) %>%
+  rename(is_top_pct = is_top_global_pct) %>%
+  mutate(prediction_type = "global_percentile")
+
+training_bias_contingency_local <-
+  training_bias_contingency %>%
+  group_by(classifier, formulation, features, .drop = FALSE) %>%
+  count(any_connected_train, is_top_local_pct, .drop = FALSE) %>%
+  rename(is_top_pct = is_top_local_pct) %>%
+  mutate(prediction_type = "local_percentile")
+
+training_bias_contingency <-
+  bind_rows(
+    training_bias_contingency_global,
+    training_bias_contingency_local
+  )
+```
+
+
+```{r}
+plot_training_global_b <- function(classifier_, prediction_type_) {
+  p <-
+    training_bias_contingency %>%
+    filter(classifier == classifier_ & prediction_type == prediction_type_) %>%
+    group_by(classifier, formulation, features) %>%
+    mutate(frac = n / sum(n)) %>%
+    ungroup() %>%
+    ggplot(aes(features,
+               frac,
+               fill = is_top_pct,
+               alpha = any_connected_train)) +
+    geom_col() +
+    facet_wrap( ~ formulation) +
+    scale_fill_manual(values = c("#ef8a62", "#67a9cf")) +
+    scale_alpha_manual(values = c(0.7, 1)) +
+    guides(
+      alpha = guide_legend(title = "Gene or compound\npresent in train\nin a true gene-compound\nconnection"),
+      fill =
+        guide_legend(title =
+                       with(
+                         params,
+                         glue("Connection is\nin top {percentile_threshold}")
+                       ))
+    ) +
+    ylab("Fraction of true connections") +
+    theme(
+      plot.caption = element_text(face = "italic"),
+      axis.text.x = element_text(
+        angle = 90,
+        vjust = 0.5,
+        hjust = 1
+      )
+    ) +
+    ggtitle(glue("Training bias: {classifier_}:{prediction_type_}"),
+            subtitle = "Predictions are significantly worse if gene or compound was not seen in training\nin a true gene-compound connection (in supervised scenario)")
+
+  ggsave(
+    glue("output/training_bias_b_{prediction_type_}_{classifier_}.png"),
+    p,
+    width = 7,
+    height = 6
+  )
+
+  p
+}
+```
+
+
+```{r}
+plot_training_global_b("transformer", prediction_type_ = "global_percentile")
+plot_training_global_b("transformer", prediction_type_ = "local_percentile")
+plot_training_global_b("transformerx", prediction_type_ = "global_percentile")
+plot_training_global_b("transformerx", prediction_type_ = "local_percentile")
+plot_training_global_b("cosine", prediction_type_ = "global_percentile")
+plot_training_global_b("cosine", prediction_type_ = "local_percentile")
+plot_training_global_b("cosine1nn", prediction_type_ = "global_percentile")
+plot_training_global_b("cosine1nn", prediction_type_ = "local_percentile")
+plot_training_global_b("cosine5nn", prediction_type_ = "global_percentile")
+plot_training_global_b("cosine5nn", prediction_type_ = "local_percentile")
+plot_training_global_b("cosineavg", prediction_type_ = "global_percentile")
+plot_training_global_b("cosineavg", prediction_type_ = "local_percentile")
+```
+
+
+```{r}
+plot_training_global_c <- function(classifier_, prediction_type_) {
+
+  if (prediction_type_ == "global_percentile") {
+    prediction_col <- sym("gene_compound_global_pct")
+  } else if (prediction_type_ == "local_percentile") {
+    prediction_col <- sym("gene_compound_local_pct")
+  } else {
+    stop(glue("prediction_type {prediction_type_} unknown"))
+  }
+
+  p <-
+    training_bias %>%
+    filter(classifier == classifier_) %>%
+    group_nest(classifier, formulation, features) %>%
+    mutate(neglogp = map(data,
+                         function(df) {
+                           -log10(wilcox.test(!!prediction_col ~ any_connected_train, data = df)$p.value)
+                         })) %>%
+    unnest(neglogp) %>%
+    select(-data) %>%
+    ggplot(aes(features, neglogp)) +
+    geom_col() +
+    geom_label(aes(label = round(neglogp, 1))) +
+    ylab("-log10 p-value") +
+    facet_wrap( ~ formulation) +
+    theme(
+      plot.caption = element_text(face = "italic"),
+      axis.text.x = element_text(
+        angle = 90,
+        vjust = 0.5,
+        hjust = 1
+      )
+    ) +
+    labs(caption = "Mann-Whitney test comparing predictions when gene or compound is seen vs. not-seen in training") +
+    ggtitle(glue("Training bias: {classifier_}:{prediction_type_}"),
+            subtitle = "Predictions are significantly worse if gene or compound was not seen in training\nin a true gene-compound connection (in supervised scenario)")
+
+  ggsave(
+    glue("output/training_bias_c_{prediction_type_}_{classifier_}.png"),
+    p,
+    width = 6,
+    height = 6
+  )
+
+  p
+}
+```
+
+### P-values
+
+```{r}
+plot_training_global_c("transformer", prediction_type_ = "global_percentile")
+plot_training_global_c("transformer", prediction_type_ = "local_percentile")
+plot_training_global_c("transformerx", prediction_type_ = "global_percentile")
+plot_training_global_c("transformerx", prediction_type_ = "local_percentile")
+plot_training_global_c("cosine", prediction_type_ = "global_percentile")
+plot_training_global_c("cosine", prediction_type_ = "local_percentile")
+plot_training_global_c("cosine1nn", prediction_type_ = "global_percentile")
+plot_training_global_c("cosine1nn", prediction_type_ = "local_percentile")
+plot_training_global_c("cosine5nn", prediction_type_ = "global_percentile")
+plot_training_global_c("cosine5nn", prediction_type_ = "local_percentile")
+plot_training_global_c("cosineavg", prediction_type_ = "global_percentile")
+plot_training_global_c("cosineavg", prediction_type_ = "local_percentile")
+```
+
+

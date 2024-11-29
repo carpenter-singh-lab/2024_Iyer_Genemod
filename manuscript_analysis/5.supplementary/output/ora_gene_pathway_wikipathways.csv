@@ -1,0 +1,183 @@
+set_name,overlap_size,set_size,hit_size,universe_size,p_value,fdr
+Pathogenic Escherichia coli infection,3,3,13,64,0.00686,0.62466
+Parkin-Ubiquitin Proteasomal System pathway,3,3,13,64,0.00686,0.62466
+G1 to S cell cycle control,3,4,13,64,0.02408,1.0
+Cell cycle,3,4,13,64,0.02408,1.0
+PI3K-Akt signaling pathway,5,11,13,64,0.03721,1.0
+Monoamine GPCRs,2,2,13,64,0.03869,1.0
+Glioblastoma signaling pathways,3,6,13,64,0.0925,1.0
+Head and Neck Squamous Cell Carcinoma,2,3,13,64,0.10234,1.0
+Retinoblastoma gene in cancer,2,3,13,64,0.10234,1.0
+Thyroid stimulating hormone (TSH) signaling pathway,3,7,13,64,0.1418,1.0
+MicroRNAs in cardiomyocyte hypertrophy,3,7,13,64,0.1418,1.0
+Breast cancer pathway,2,4,13,64,0.1806,1.0
+Small cell lung cancer,2,4,13,64,0.1806,1.0
+Aryl Hydrocarbon Receptor Netpath,2,4,13,64,0.1806,1.0
+miRNA regulation of DNA damage response,2,4,13,64,0.1806,1.0
+Spinal Cord Injury,2,4,13,64,0.1806,1.0
+"GPCRs, Other",2,4,13,64,0.1806,1.0
+DNA damage response,2,4,13,64,0.1806,1.0
+Focal Adhesion-PI3K-Akt-mTOR-signaling pathway,3,9,13,64,0.26107,1.0
+Cardiac Hypertrophic Response,2,5,13,64,0.26582,1.0
+Regulation of Actin Cytoskeleton,2,5,13,64,0.26582,1.0
+Calcium Regulation in the Cardiac Cell,2,6,13,64,0.35248,1.0
+IL-9 signaling pathway,1,2,13,64,0.36756,1.0
+Pregnane X receptor pathway,1,2,13,64,0.36756,1.0
+Nucleotide-binding Oligomerization Domain (NOD) pathway,1,2,13,64,0.36756,1.0
+Ebstein-Barr virus LMP1 signaling,1,2,13,64,0.36756,1.0
+Endochondral Ossification,1,2,13,64,0.36756,1.0
+Constitutive Androstane Receptor Pathway,1,2,13,64,0.36756,1.0
+Endochondral Ossification with Skeletal Dysplasias,1,2,13,64,0.36756,1.0
+Somatroph axis (GH) and its relationship to dietary restriction and aging,1,2,13,64,0.36756,1.0
+Tumor suppressor activity of SMARCB1,1,2,13,64,0.36756,1.0
+Factors and pathways affecting insulin-like growth factor (IGF1)-Akt signaling,1,2,13,64,0.36756,1.0
+Sudden Infant Death Syndrome (SIDS) Susceptibility Pathways,2,7,13,64,0.43675,1.0
+Regulation of Microtubule Cytoskeleton,1,3,13,64,0.50017,1.0
+MECP2 and Associated Rett Syndrome,1,3,13,64,0.50017,1.0
+Aryl Hydrocarbon Receptor Pathway,1,3,13,64,0.50017,1.0
+Senescence and Autophagy in Cancer,1,3,13,64,0.50017,1.0
+Integrated breast cancer pathway,1,3,13,64,0.50017,1.0
+Ebola Virus Pathway on Host,1,3,13,64,0.50017,1.0
+Apoptosis,1,3,13,64,0.50017,1.0
+"GPCRs, Class A Rhodopsin-like",2,8,13,64,0.5161,1.0
+Nuclear Receptors Meta-Pathway,2,9,13,64,0.58896,1.0
+TNF-alpha signaling pathway,1,4,13,64,0.60669,1.0
+Vitamin D Receptor Pathway,1,4,13,64,0.60669,1.0
+Melanoma,1,4,13,64,0.60669,1.0
+Non-small cell lung cancer,1,4,13,64,0.60669,1.0
+T-Cell antigen Receptor (TCR) pathway during Staphylococcus aureus infection,1,4,13,64,0.60669,1.0
+NRF2 pathway,1,5,13,64,0.69191,1.0
+Pancreatic adenocarcinoma pathway,1,5,13,64,0.69191,1.0
+EGFR Tyrosine Kinase Inhibitor Resistance,1,5,13,64,0.69191,1.0
+Pathways Regulating Hippo Signaling,1,5,13,64,0.69191,1.0
+Hippo-Merlin Signaling Dysregulation,1,5,13,64,0.69191,1.0
+Insulin Signaling,1,5,13,64,0.69191,1.0
+Focal Adhesion,1,6,13,64,0.75979,1.0
+Corticotropin-releasing hormone signaling pathway,1,6,13,64,0.75979,1.0
+VEGFA-VEGFR2 Signaling Pathway,1,8,13,64,0.85614,1.0
+Ras signaling,1,8,13,64,0.85614,1.0
+Oncostatin M Signaling Pathway,1,9,13,64,0.88953,1.0
+Cannabinoid receptor signaling,0,2,13,64,1.0,1.0
+ESC Pluripotency Pathways,0,3,13,64,1.0,1.0
+Lung fibrosis,0,2,13,64,1.0,1.0
+Myometrial relaxation and contraction pathways,0,5,13,64,1.0,1.0
+miRNAs involvement in the immune response in sepsis,0,3,13,64,1.0,1.0
+NRF2-ARE regulation,0,2,13,64,1.0,1.0
+Phytochemical activity on NRF2 transcriptional activation,0,2,13,64,1.0,1.0
+Tryptophan metabolism,0,2,13,64,1.0,1.0
+Estrogen signaling pathway,0,2,13,64,1.0,1.0
+G Protein Signaling Pathways,0,3,13,64,1.0,1.0
+Eicosanoid metabolism via cyclooxygenases (COX),0,2,13,64,1.0,1.0
+Arrhythmogenic Right Ventricular Cardiomyopathy,0,3,13,64,1.0,1.0
+Neural Crest Cell Migration during Development,0,2,13,64,1.0,1.0
+Cell migration and invasion through p75NTR,0,2,13,64,1.0,1.0
+Synaptic signaling pathways associated with autism spectrum disorder,0,2,13,64,1.0,1.0
+Regulatory circuits of the STAT3 signaling pathway,0,4,13,64,1.0,1.0
+Chemokine signaling pathway,0,5,13,64,1.0,1.0
+Neuroinflammation,0,3,13,64,1.0,1.0
+IL-5 signaling pathway,0,3,13,64,1.0,1.0
+Physiological and pathological hypertrophy of the heart,0,4,13,64,1.0,1.0
+Metapathway biotransformation Phase I and II,0,3,13,64,1.0,1.0
+Interleukin-11 Signaling Pathway,0,2,13,64,1.0,1.0
+"Parkinson,s disease pathway",0,2,13,64,1.0,1.0
+RANKL-RANK signaling pathway,0,3,13,64,1.0,1.0
+Leptin signaling pathway,0,5,13,64,1.0,1.0
+Common Pathways Underlying Drug Addiction,0,2,13,64,1.0,1.0
+Type II interferon signaling (IFNG),0,2,13,64,1.0,1.0
+Wnt signaling pathway and pluripotency,0,3,13,64,1.0,1.0
+Folate Metabolism,0,2,13,64,1.0,1.0
+Phosphodiesterases in neuronal function,0,4,13,64,1.0,1.0
+Selenium Micronutrient Network,0,2,13,64,1.0,1.0
+Primary focal segmental glomerulosclerosis (FSGS),0,2,13,64,1.0,1.0
+"Non-genomic actions of 1,25 dihydroxyvitamin D3",0,5,13,64,1.0,1.0
+MAPK Signaling Pathway,0,11,13,64,1.0,1.0
+Netrin-UNC5B signaling pathway,0,3,13,64,1.0,1.0
+Lidocaine metabolism,0,2,13,64,1.0,1.0
+Angiopoietin Like Protein 8 Regulatory Pathway,0,4,13,64,1.0,1.0
+Association Between Physico-Chemical Features and Toxicity Associated Pathways,0,3,13,64,1.0,1.0
+Host-pathogen interaction of human coronaviruses - interferon induction,0,3,13,64,1.0,1.0
+Kisspeptin-kisspeptin receptor system in the ovary,0,3,13,64,1.0,1.0
+Canonical and non-canonical TGF-B signaling,0,2,13,64,1.0,1.0
+Allograft Rejection,0,2,13,64,1.0,1.0
+IL-1 signaling pathway,0,4,13,64,1.0,1.0
+EGF-EGFR signaling pathway,0,7,13,64,1.0,1.0
+Epithelial to mesenchymal transition in colorectal cancer,0,7,13,64,1.0,1.0
+Integrin-mediated Cell Adhesion,0,3,13,64,1.0,1.0
+Peptide GPCRs,0,4,13,64,1.0,1.0
+TGF-beta Signaling Pathway,0,4,13,64,1.0,1.0
+Amyotrophic lateral sclerosis (ALS),0,2,13,64,1.0,1.0
+Regulation of toll-like receptor signaling pathway,0,5,13,64,1.0,1.0
+Oxidation by Cytochrome P450,0,2,13,64,1.0,1.0
+IL17 signaling pathway,0,2,13,64,1.0,1.0
+Extracellular vesicle-mediated signaling in recipient cells,0,2,13,64,1.0,1.0
+"Alzheimer,s disease",0,4,13,64,1.0,1.0
+Immune response to tuberculosis,0,2,13,64,1.0,1.0
+Fragile X Syndrome,0,2,13,64,1.0,1.0
+Osteoblast differentiation,0,5,13,64,1.0,1.0
+Splicing factor NOVA regulated synaptic proteins,0,2,13,64,1.0,1.0
+Prolactin Signaling Pathway,0,6,13,64,1.0,1.0
+Purinergic signaling,0,2,13,64,1.0,1.0
+3q29 copy number variation syndrome,0,2,13,64,1.0,1.0
+Fas ligand pathway and stress induction of heat shock proteins,0,3,13,64,1.0,1.0
+Fatty Acid Omega Oxidation,0,2,13,64,1.0,1.0
+DNA damage response (only ATM dependent),0,2,13,64,1.0,1.0
+ErbB signaling pathway,0,4,13,64,1.0,1.0
+Estrogen metabolism,0,2,13,64,1.0,1.0
+Acute viral myocarditis,0,3,13,64,1.0,1.0
+Neovascularisation processes,0,3,13,64,1.0,1.0
+Vitamin B12 metabolism,0,2,13,64,1.0,1.0
+Vitamin D-sensitive calcium signaling in depression,0,2,13,64,1.0,1.0
+Host-pathogen interaction of human coronaviruses - MAPK signaling,0,2,13,64,1.0,1.0
+IL-7 signaling pathway,0,2,13,64,1.0,1.0
+Complement system,0,2,13,64,1.0,1.0
+Copper homeostasis,0,2,13,64,1.0,1.0
+Apoptosis Modulation and Signaling,0,2,13,64,1.0,1.0
+Angiogenesis,0,3,13,64,1.0,1.0
+IL-2 signaling pathway,0,3,13,64,1.0,1.0
+Adipogenesis,0,2,13,64,1.0,1.0
+Gastrin signaling pathway,0,6,13,64,1.0,1.0
+TNF related weak inducer of apoptosis (TWEAK) Signaling Pathway,0,3,13,64,1.0,1.0
+Nuclear Receptors in Lipid Metabolism and Toxicity,0,3,13,64,1.0,1.0
+Wnt-beta-catenin signaling pathway in leukemia,0,2,13,64,1.0,1.0
+Follicle Stimulating Hormone (FSH) signaling pathway,0,2,13,64,1.0,1.0
+Monoamine Transport,0,3,13,64,1.0,1.0
+Mechanoregulation and pathology of YAP-TAZ via Hippo and non-Hippo mechanisms,0,2,13,64,1.0,1.0
+Chromosomal and microsatellite instability in colorectal cancer,0,3,13,64,1.0,1.0
+Toll-like Receptor Signaling Pathway,0,4,13,64,1.0,1.0
+Modulators of TCR signaling and T cell activation,0,2,13,64,1.0,1.0
+Alpha 6 Beta 4 signaling pathway,0,2,13,64,1.0,1.0
+Wnt Signaling Pathway,0,3,13,64,1.0,1.0
+Signal transduction through IL1R,0,3,13,64,1.0,1.0
+IL-18 signaling pathway,0,4,13,64,1.0,1.0
+B Cell Receptor Signaling Pathway,0,6,13,64,1.0,1.0
+T-cell receptor (TCR) signaling pathway,0,6,13,64,1.0,1.0
+NO-cGMP-PKG mediated Neuroprotection,0,3,13,64,1.0,1.0
+IL-6 signaling pathway,0,2,13,64,1.0,1.0
+RAS and bradykinin pathways in COVID-19,0,2,13,64,1.0,1.0
+Tamoxifen metabolism,0,2,13,64,1.0,1.0
+Kit receptor signaling pathway,0,5,13,64,1.0,1.0
+Endometrial cancer,0,2,13,64,1.0,1.0
+Neural Crest Cell Migration in Cancer,0,2,13,64,1.0,1.0
+Hepatitis C and Hepatocellular Carcinoma,0,6,13,64,1.0,1.0
+Aflatoxin B1 metabolism,0,2,13,64,1.0,1.0
+Novel intracellular components of RIG-I-like receptor (RLR) pathway,0,2,13,64,1.0,1.0
+Thymic Stromal LymphoPoietin (TSLP) Signaling Pathway,0,6,13,64,1.0,1.0
+Pathways in clear cell renal cell carcinoma,0,2,13,64,1.0,1.0
+RAC1-PAK1-p38-MMP2 Pathway,0,4,13,64,1.0,1.0
+Wnt signaling,0,2,13,64,1.0,1.0
+Brain-derived neurotrophic factor (BDNF) signaling pathway,0,5,13,64,1.0,1.0
+Hypothesized Pathways in Pathogenesis of Cardiovascular Disease,0,2,13,64,1.0,1.0
+Resistin as a regulator of inflammation,0,2,13,64,1.0,1.0
+Nonalcoholic fatty liver disease,0,4,13,64,1.0,1.0
+T-Cell Receptor and Co-stimulatory Signaling,0,2,13,64,1.0,1.0
+Translation inhibitors in chronically activated PDGFRA cells,0,3,13,64,1.0,1.0
+Photodynamic therapy-induced NFE2L2 (NRF2) survival signaling,0,2,13,64,1.0,1.0
+IL-3 signaling pathway,0,3,13,64,1.0,1.0
+Hepatitis B infection,0,6,13,64,1.0,1.0
+Energy Metabolism,0,2,13,64,1.0,1.0
+Host-pathogen interaction of human coronaviruses - apoptosis,0,3,13,64,1.0,1.0
+Interferon type I signaling pathways,0,3,13,64,1.0,1.0
+Notch Signaling Pathway Netpath,0,3,13,64,1.0,1.0
+IL-4 signaling pathway,0,3,13,64,1.0,1.0
+Signaling of Hepatocyte Growth Factor Receptor,0,3,13,64,1.0,1.0
+AGE-RAGE pathway,0,7,13,64,1.0,1.0

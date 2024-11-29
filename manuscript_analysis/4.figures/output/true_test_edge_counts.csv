@@ -1,0 +1,9 @@
+formulation,which_connected_train,n,label_y
+compound,neither,19,19
+compound,compound,72,91
+either,neither,23,23
+either,gene,5,28
+either,compound,32,60
+either,both,42,102
+gene,neither,56,56
+gene,gene,42,98

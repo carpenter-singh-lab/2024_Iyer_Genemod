@@ -1,0 +1,56 @@
+---
+title: "Cosine baseline setup"
+---
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+```
+
+# Create profiles backend
+
+Run this in `1.analysis/code`
+
+```
+import utils_stanford
+e = utils_stanford.get_standard_experiments()
+d = utils_stanford.get_raw_dataframe(e)
+d_crispr = utils_stanford.get_median_consensus_profiles(d, "CRISPR")
+d_compound = utils_stanford.get_median_consensus_profiles(d, "Compound")
+d_orf = utils_stanford.get_median_consensus_profiles(d, "ORF")
+import pandas
+d = pandas.concat([d_orf, d_compound, d_crispr])
+d.to_parquet("standard_experiments.parquet")
+```
+
+# Compute profile cosine similarities
+
+```{r}
+profiles <- arrow::read_parquet("../1.analysis/code/standard_experiments.parquet")
+```
+
+```{r}
+sim_df <- matric::sim_calculate(profiles, method = "cosine")
+
+row_metadata <- attr(sim_df, "row_metadata")
+
+sim_df <- 
+  sim_df %>% 
+  matric::sim_annotate(
+    row_metadata = row_metadata,
+    annotation_cols = 
+      c("Metadata_modality",
+        "Metadata_broad_sample",
+        "Metadata_genes",
+        "Metadata_pert_iname_compound")
+  )
+```
+
+
+```{r}
+sim_df %>% arrow::write_parquet("output/standard_experiments_sim.parquet")
+```
+

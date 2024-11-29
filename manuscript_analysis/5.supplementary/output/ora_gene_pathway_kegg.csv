@@ -1,0 +1,177 @@
+set_name,overlap_size,set_size,hit_size,universe_size,p_value,fdr
+Phagosome - Homo sapiens (human),3,3,13,67,0.00597,1.0
+Gap junction - Homo sapiens (human),3,4,13,67,0.02108,1.0
+Cell cycle - Homo sapiens (human),3,4,13,67,0.02108,1.0
+PI3K-Akt signaling pathway - Homo sapiens (human),5,11,13,67,0.03054,1.0
+Cushing syndrome - Homo sapiens (human),2,2,13,67,0.03528,1.0
+Huntington disease - Homo sapiens (human),3,5,13,67,0.04651,1.0
+Prostate cancer - Homo sapiens (human),3,5,13,67,0.04651,1.0
+Amyotrophic lateral sclerosis - Homo sapiens (human),3,6,13,67,0.08205,1.0
+Parkinson disease - Homo sapiens (human),3,6,13,67,0.08205,1.0
+Oocyte meiosis - Homo sapiens (human),2,3,13,67,0.09389,1.0
+p53 signaling pathway - Homo sapiens (human),2,3,13,67,0.09389,1.0
+Taste transduction - Homo sapiens (human),2,3,13,67,0.09389,1.0
+Pathways of neurodegeneration - multiple diseases - Homo sapiens (human),4,11,13,67,0.12907,1.0
+Salmonella infection - Homo sapiens (human),4,11,13,67,0.12907,1.0
+Alzheimer disease - Homo sapiens (human),4,11,13,67,0.12907,1.0
+Viral carcinogenesis - Homo sapiens (human),2,4,13,67,0.16671,1.0
+Glioma - Homo sapiens (human),2,4,13,67,0.16671,1.0
+Small cell lung cancer - Homo sapiens (human),2,4,13,67,0.16671,1.0
+Regulation of actin cytoskeleton - Homo sapiens (human),2,4,13,67,0.16671,1.0
+Breast cancer - Homo sapiens (human),2,4,13,67,0.16671,1.0
+Pathogenic Escherichia coli infection - Homo sapiens (human),3,8,13,67,0.17863,1.0
+Prion disease - Homo sapiens (human),3,8,13,67,0.17863,1.0
+Progesterone-mediated oocyte maturation - Homo sapiens (human),3,8,13,67,0.17863,1.0
+Transcriptional misregulation in cancer - Homo sapiens (human),2,5,13,67,0.24684,1.0
+Human papillomavirus infection - Homo sapiens (human),2,5,13,67,0.24684,1.0
+Hepatitis C - Homo sapiens (human),2,5,13,67,0.24684,1.0
+FoxO signaling pathway - Homo sapiens (human),2,5,13,67,0.24684,1.0
+Melanoma - Homo sapiens (human),2,5,13,67,0.24684,1.0
+Hepatocellular carcinoma - Homo sapiens (human),2,5,13,67,0.24684,1.0
+Cholinergic synapse - Homo sapiens (human),2,5,13,67,0.24684,1.0
+Human T-cell leukemia virus 1 infection - Homo sapiens (human),2,6,13,67,0.32923,1.0
+Cellular senescence - Homo sapiens (human),2,6,13,67,0.32923,1.0
+Long-term depression - Homo sapiens (human),1,2,13,67,0.35278,1.0
+Chronic myeloid leukemia - Homo sapiens (human),1,2,13,67,0.35278,1.0
+AMPK signaling pathway - Homo sapiens (human),1,2,13,67,0.35278,1.0
+Gastric acid secretion - Homo sapiens (human),1,2,13,67,0.35278,1.0
+Antigen processing and presentation - Homo sapiens (human),1,2,13,67,0.35278,1.0
+Adherens junction - Homo sapiens (human),1,2,13,67,0.35278,1.0
+Longevity regulating pathway - multiple species - Homo sapiens (human),1,2,13,67,0.35278,1.0
+Longevity regulating pathway - Homo sapiens (human),1,2,13,67,0.35278,1.0
+Pathways in cancer - Homo sapiens (human),4,16,13,67,0.37383,1.0
+Measles - Homo sapiens (human),2,7,13,67,0.41027,1.0
+Protein processing in endoplasmic reticulum - Homo sapiens (human),1,3,13,67,0.48223,1.0
+Tight junction - Homo sapiens (human),1,3,13,67,0.48223,1.0
+Pancreatic secretion - Homo sapiens (human),1,3,13,67,0.48223,1.0
+mTOR signaling pathway - Homo sapiens (human),1,3,13,67,0.48223,1.0
+Estrogen signaling pathway - Homo sapiens (human),1,3,13,67,0.48223,1.0
+Serotonergic synapse - Homo sapiens (human),1,3,13,67,0.48223,1.0
+Epstein-Barr virus infection - Homo sapiens (human),2,8,13,67,0.48749,1.0
+Neuroactive ligand-receptor interaction - Homo sapiens (human),2,9,13,67,0.55928,1.0
+HIF-1 signaling pathway - Homo sapiens (human),1,4,13,67,0.5874,1.0
+Gastric cancer - Homo sapiens (human),1,4,13,67,0.5874,1.0
+Salivary secretion - Homo sapiens (human),1,4,13,67,0.5874,1.0
+Autophagy - animal - Homo sapiens (human),1,4,13,67,0.5874,1.0
+Pancreatic cancer - Homo sapiens (human),1,4,13,67,0.5874,1.0
+Signaling pathways regulating pluripotency of stem cells - Homo sapiens (human),1,4,13,67,0.5874,1.0
+Calcium signaling pathway - Homo sapiens (human),2,10,13,67,0.62473,1.0
+Non-small cell lung cancer - Homo sapiens (human),1,5,13,67,0.67254,1.0
+Insulin secretion - Homo sapiens (human),1,5,13,67,0.67254,1.0
+Necroptosis - Homo sapiens (human),1,5,13,67,0.67254,1.0
+IL-17 signaling pathway - Homo sapiens (human),1,6,13,67,0.7412,1.0
+T cell receptor signaling pathway - Homo sapiens (human),1,6,13,67,0.7412,1.0
+Focal adhesion - Homo sapiens (human),1,6,13,67,0.7412,1.0
+Influenza A - Homo sapiens (human),1,6,13,67,0.7412,1.0
+Fluid shear stress and atherosclerosis - Homo sapiens (human),1,6,13,67,0.7412,1.0
+NOD-like receptor signaling pathway - Homo sapiens (human),1,6,13,67,0.7412,1.0
+Hepatitis B - Homo sapiens (human),1,7,13,67,0.79635,1.0
+Proteoglycans in cancer - Homo sapiens (human),1,8,13,67,0.84048,1.0
+Human cytomegalovirus infection - Homo sapiens (human),1,8,13,67,0.84048,1.0
+Lipid and atherosclerosis - Homo sapiens (human),1,8,13,67,0.84048,1.0
+Kaposi sarcoma-associated herpesvirus infection - Homo sapiens (human),1,8,13,67,0.84048,1.0
+Rap1 signaling pathway - Homo sapiens (human),1,8,13,67,0.84048,1.0
+Th17 cell differentiation - Homo sapiens (human),1,8,13,67,0.84048,1.0
+AGE-RAGE signaling pathway in diabetic complications - Homo sapiens (human),1,9,13,67,0.87563,1.0
+Ras signaling pathway - Homo sapiens (human),1,9,13,67,0.87563,1.0
+cAMP signaling pathway - Homo sapiens (human),1,10,13,67,0.9035,1.0
+MAPK signaling pathway - Homo sapiens (human),1,14,13,67,0.96684,1.0
+Linoleic acid metabolism - Homo sapiens (human),0,2,13,67,1.0,1.0
+Primary immunodeficiency - Homo sapiens (human),0,2,13,67,1.0,1.0
+Wnt signaling pathway - Homo sapiens (human),0,3,13,67,1.0,1.0
+Renin secretion - Homo sapiens (human),0,2,13,67,1.0,1.0
+Chemokine signaling pathway - Homo sapiens (human),0,4,13,67,1.0,1.0
+Carbohydrate digestion and absorption - Homo sapiens (human),0,2,13,67,1.0,1.0
+Dopaminergic synapse - Homo sapiens (human),0,5,13,67,1.0,1.0
+Adipocytokine signaling pathway - Homo sapiens (human),0,2,13,67,1.0,1.0
+Prolactin signaling pathway - Homo sapiens (human),0,3,13,67,1.0,1.0
+Leishmaniasis - Homo sapiens (human),0,4,13,67,1.0,1.0
+Metabolism of xenobiotics by cytochrome P450 - Homo sapiens (human),0,2,13,67,1.0,1.0
+B cell receptor signaling pathway - Homo sapiens (human),0,3,13,67,1.0,1.0
+Long-term potentiation - Homo sapiens (human),0,2,13,67,1.0,1.0
+Nitrogen metabolism - Homo sapiens (human),0,2,13,67,1.0,1.0
+Phospholipase D signaling pathway - Homo sapiens (human),0,2,13,67,1.0,1.0
+Neurotrophin signaling pathway - Homo sapiens (human),0,4,13,67,1.0,1.0
+Colorectal cancer - Homo sapiens (human),0,3,13,67,1.0,1.0
+NF-kappa B signaling pathway - Homo sapiens (human),0,4,13,67,1.0,1.0
+Diabetic cardiomyopathy - Homo sapiens (human),0,5,13,67,1.0,1.0
+Hematopoietic cell lineage - Homo sapiens (human),0,2,13,67,1.0,1.0
+Legionellosis - Homo sapiens (human),0,2,13,67,1.0,1.0
+Insulin resistance - Homo sapiens (human),0,4,13,67,1.0,1.0
+Circadian entrainment - Homo sapiens (human),0,2,13,67,1.0,1.0
+VEGF signaling pathway - Homo sapiens (human),0,3,13,67,1.0,1.0
+Cytokine-cytokine receptor interaction - Homo sapiens (human),0,2,13,67,1.0,1.0
+Fc epsilon RI signaling pathway - Homo sapiens (human),0,4,13,67,1.0,1.0
+Protein digestion and absorption - Homo sapiens (human),0,2,13,67,1.0,1.0
+"Growth hormone synthesis, secretion and action - Homo sapiens (human)",0,5,13,67,1.0,1.0
+Natural killer cell mediated cytotoxicity - Homo sapiens (human),0,4,13,67,1.0,1.0
+Apoptosis - multiple species - Homo sapiens (human),0,2,13,67,1.0,1.0
+Chagas disease - Homo sapiens (human),0,4,13,67,1.0,1.0
+GnRH signaling pathway - Homo sapiens (human),0,3,13,67,1.0,1.0
+Morphine addiction - Homo sapiens (human),0,3,13,67,1.0,1.0
+Steroid hormone biosynthesis - Homo sapiens (human),0,2,13,67,1.0,1.0
+Axon guidance - Homo sapiens (human),0,2,13,67,1.0,1.0
+ErbB signaling pathway - Homo sapiens (human),0,4,13,67,1.0,1.0
+Shigellosis - Homo sapiens (human),0,5,13,67,1.0,1.0
+Glutamatergic synapse - Homo sapiens (human),0,2,13,67,1.0,1.0
+Human immunodeficiency virus 1 infection - Homo sapiens (human),0,6,13,67,1.0,1.0
+Mitophagy - animal - Homo sapiens (human),0,2,13,67,1.0,1.0
+Pertussis - Homo sapiens (human),0,4,13,67,1.0,1.0
+Th1 and Th2 cell differentiation - Homo sapiens (human),0,4,13,67,1.0,1.0
+TNF signaling pathway - Homo sapiens (human),0,5,13,67,1.0,1.0
+Retinol metabolism - Homo sapiens (human),0,2,13,67,1.0,1.0
+Chemical carcinogenesis - Homo sapiens (human),0,2,13,67,1.0,1.0
+RIG-I-like receptor signaling pathway - Homo sapiens (human),0,2,13,67,1.0,1.0
+Adrenergic signaling in cardiomyocytes - Homo sapiens (human),0,5,13,67,1.0,1.0
+C-type lectin receptor signaling pathway - Homo sapiens (human),0,5,13,67,1.0,1.0
+Dilated cardiomyopathy - Homo sapiens (human),0,3,13,67,1.0,1.0
+Leukocyte transendothelial migration - Homo sapiens (human),0,2,13,67,1.0,1.0
+Fc gamma R-mediated phagocytosis - Homo sapiens (human),0,4,13,67,1.0,1.0
+Thyroid hormone signaling pathway - Homo sapiens (human),0,3,13,67,1.0,1.0
+Yersinia infection - Homo sapiens (human),0,5,13,67,1.0,1.0
+Vascular smooth muscle contraction - Homo sapiens (human),0,5,13,67,1.0,1.0
+Coronavirus disease - COVID-19 - Homo sapiens (human),0,5,13,67,1.0,1.0
+Acute myeloid leukemia - Homo sapiens (human),0,2,13,67,1.0,1.0
+Insulin signaling pathway - Homo sapiens (human),0,2,13,67,1.0,1.0
+African trypanosomiasis - Homo sapiens (human),0,3,13,67,1.0,1.0
+Relaxin signaling pathway - Homo sapiens (human),0,3,13,67,1.0,1.0
+Type II diabetes mellitus - Homo sapiens (human),0,2,13,67,1.0,1.0
+Aldosterone-regulated sodium reabsorption - Homo sapiens (human),0,2,13,67,1.0,1.0
+Platelet activation - Homo sapiens (human),0,4,13,67,1.0,1.0
+cGMP-PKG signaling pathway - Homo sapiens (human),0,4,13,67,1.0,1.0
+Amoebiasis - Homo sapiens (human),0,4,13,67,1.0,1.0
+Oxytocin signaling pathway - Homo sapiens (human),0,4,13,67,1.0,1.0
+Epithelial cell signaling in Helicobacter pylori infection - Homo sapiens (human),0,6,13,67,1.0,1.0
+Sphingolipid signaling pathway - Homo sapiens (human),0,5,13,67,1.0,1.0
+Retrograde endocannabinoid signaling - Homo sapiens (human),0,3,13,67,1.0,1.0
+Toxoplasmosis - Homo sapiens (human),0,5,13,67,1.0,1.0
+JAK-STAT signaling pathway - Homo sapiens (human),0,3,13,67,1.0,1.0
+"Parathyroid hormone synthesis, secretion and action - Homo sapiens (human)",0,2,13,67,1.0,1.0
+Non-alcoholic fatty liver disease - Homo sapiens (human),0,4,13,67,1.0,1.0
+MicroRNAs in cancer - Homo sapiens (human),0,6,13,67,1.0,1.0
+Drug metabolism - cytochrome P450 - Homo sapiens (human),0,2,13,67,1.0,1.0
+Herpes simplex virus 1 infection - Homo sapiens (human),0,4,13,67,1.0,1.0
+Thyroid cancer - Homo sapiens (human),0,2,13,67,1.0,1.0
+Spinocerebellar ataxia - Homo sapiens (human),0,4,13,67,1.0,1.0
+Toll-like receptor signaling pathway - Homo sapiens (human),0,4,13,67,1.0,1.0
+Tuberculosis - Homo sapiens (human),0,6,13,67,1.0,1.0
+Neutrophil extracellular trap formation - Homo sapiens (human),0,6,13,67,1.0,1.0
+Alcoholism - Homo sapiens (human),0,2,13,67,1.0,1.0
+Apelin signaling pathway - Homo sapiens (human),0,2,13,67,1.0,1.0
+Renal cell carcinoma - Homo sapiens (human),0,4,13,67,1.0,1.0
+GnRH secretion - Homo sapiens (human),0,3,13,67,1.0,1.0
+Apoptosis - Homo sapiens (human),0,4,13,67,1.0,1.0
+Malaria - Homo sapiens (human),0,3,13,67,1.0,1.0
+Aldosterone synthesis and secretion - Homo sapiens (human),0,2,13,67,1.0,1.0
+Cardiac muscle contraction - Homo sapiens (human),0,3,13,67,1.0,1.0
+Choline metabolism in cancer - Homo sapiens (human),0,4,13,67,1.0,1.0
+PD-L1 expression and PD-1 checkpoint pathway in cancer - Homo sapiens (human),0,5,13,67,1.0,1.0
+Renin-angiotensin system - Homo sapiens (human),0,2,13,67,1.0,1.0
+Central carbon metabolism in cancer - Homo sapiens (human),0,5,13,67,1.0,1.0
+Systemic lupus erythematosus - Homo sapiens (human),0,3,13,67,1.0,1.0
+Osteoclast differentiation - Homo sapiens (human),0,7,13,67,1.0,1.0
+Arrhythmogenic right ventricular cardiomyopathy - Homo sapiens (human),0,3,13,67,1.0,1.0
+Inflammatory mediator regulation of TRP channels - Homo sapiens (human),0,7,13,67,1.0,1.0
+Purine metabolism - Homo sapiens (human),0,2,13,67,1.0,1.0
+Amphetamine addiction - Homo sapiens (human),0,2,13,67,1.0,1.0
+Hypertrophic cardiomyopathy - Homo sapiens (human),0,3,13,67,1.0,1.0

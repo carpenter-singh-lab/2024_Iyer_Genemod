@@ -1,0 +1,10 @@
+classifier,formulation,features
+transformer,compound,crispr
+transformer,compound,crispr_orf
+transformer,compound,orf
+transformer,gene,crispr
+transformer,gene,crispr_orf
+transformer,gene,orf
+transformer,pair,crispr
+transformer,pair,crispr_orf
+transformer,pair,orf

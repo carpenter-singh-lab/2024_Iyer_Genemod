@@ -1,0 +1,4 @@
+classifier,formulation,features
+transformerx,compound,crispr
+transformerx,compound,crispr_orf
+transformerx,compound,orf

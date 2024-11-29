@@ -1,0 +1,132 @@
+---
+title: "Inspect split consistency"
+---
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+```
+
+# Read data
+
+```{r}
+formulation_features <- 
+  read_csv("input/formulation_features_transformer.csv", 
+           col_types = cols(.default = col_character()))
+
+```
+
+```{r}
+splits_df <-
+  formulation_features %>%
+  select(formulation, features) %>%
+  pmap_dfr(function(formulation, features) {
+    splits <-
+      read_csv(glue("output/splits__{formulation}__{features}.csv.gz"),
+               col_types = cols())  %>%
+      arrange(across(everything())) %>%
+      mutate(formulation = formulation,
+             features = features) %>%
+      distinct()
+  })
+```
+
+
+```{r}
+splits_hash_df <-
+  formulation_features %>%
+  select(formulation, features) %>%
+  pmap_dfr(function(formulation, features) {
+    splits <-
+      read_csv(glue("output/splits__{formulation}__{features}.csv.gz"),
+               col_types = cols())  %>%
+      arrange(across(everything()))
+    
+    hash <- str_sub(digest::digest(splits), 1, 8)
+    
+    tibble(formulation,
+           features,
+           hash)
+  })
+```
+
+# Inspect
+
+```{r rows.print=20}
+splits_df %>%
+  group_by(formulation, features, split_set) %>%
+  count() %>%
+  arrange(formulation, features, split_set) %>%
+  pivot_wider(names_from = "split_set", values_from = n)
+```
+
+```{r}
+splits_df %>%
+  group_by(formulation, features, split_set) %>%
+  count() %>%
+  ggplot(aes(features, n, fill = split_set)) + geom_col() + facet_wrap(~formulation)
+```
+
+```{r rows.print=20}
+splits_df %>%
+  group_by(formulation, features, split_set) %>%
+  count() %>%
+  arrange(formulation, features, split_set) %>%
+  pivot_wider(names_from = "features", values_from = n)
+```
+
+```{r}
+splits_df %>%
+  group_by(formulation, features, split_set) %>%
+  count() %>%
+  ggplot(aes(split_set, n, fill = features)) + geom_col(position = "dodge") + facet_wrap(~formulation)
+```
+
+```{r rows.print=20}
+splits_hash_df %>% arrange(formulation, features, hash)
+```
+
+
+```{r rows.print=20}
+splits_hash_df %>% arrange(hash, formulation, features)
+```
+
+Check this:
+
+> In the leave-out-compound formulation, we know that the train and test sets have non-overlapping sets of compounds. So a test gene can be seen with a different compound during training which may or may not be a "sister compound" of the test compound. Similarly, in leave-out-compound-together, a test gene can be seen with a different compound during training, but we can guarantee the training compound is NOT a sister compound of the test compound. As a reminder, sister compounds refer to compounds that are distinct but share a gene target.
+
+```{r rows.print=20}
+# get splits for a formulation-features pair, drop validation set
+splits_i <-
+  splits_df %>%
+  ungroup %>%
+  inner_join(
+    data.frame(
+      classifier = "transformer",
+      formulation = "compound_together",
+      features = "orf"
+    )
+  ) %>%
+  filter(is_connected) %>%
+  filter(split_set != "val")
+
+# get list of genes that are in a true connection in both train and test
+gene_list <-
+  splits_i %>%
+  distinct(gene, split_set) %>%
+  count(gene) %>%
+  filter(n > 1) %>%
+  select(-n)
+
+# for each gene, list the true connections in test set and in train set
+splits_i %>%
+  select(gene, split_set, pert_iname_compound) %>%
+  inner_join(gene_list, by = "gene") %>%
+  arrange(gene, split_set, pert_iname_compound) %>%
+  group_by(gene, split_set) %>%
+  summarize(pert_iname_compounds = str_c(pert_iname_compound, collapse = ","))
+```
+

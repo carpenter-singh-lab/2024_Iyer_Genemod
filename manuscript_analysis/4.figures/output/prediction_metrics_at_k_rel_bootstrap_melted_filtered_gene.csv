@@ -1,0 +1,7 @@
+features_classifier,formulation,metric,estimate,lci,uci,model
+crispr_orf_max__cosine,gene,precision,0,0,0,"gene-cpd
+simil."
+gene__cosine1nn,gene,precision,6e-4,0,0.0095,"1-NN
+(gene)"
+crispr_orf_max__transformer,gene,precision,0.0126,0,0.0462,"model
+(w embed.)"
