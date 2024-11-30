@@ -1,0 +1,68 @@
+---
+title: "Cosine baseline - combine predictions for pair"
+---
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+```
+
+# Copy splits
+
+```{r}
+file.copy(
+  glue("output/splits__pair__compound.csv.gz"),
+  glue("output/splits__pair__gene_compound.csv.gz")
+)
+```
+
+# Combine predictions
+
+```{r}
+combine_gene_compound_prediction <- function(cosine_classifier) {
+  inner_join(
+    read_csv(
+      glue(
+        "../1.analysis/final_binary_predictions/{cosine_classifier}__pair__compound.csv"
+      )
+    ) %>%
+      select(-y_pred),
+    read_csv(
+      glue(
+        "../1.analysis/final_binary_predictions/{cosine_classifier}__pair__gene.csv"
+      )
+    ) %>%
+      select(-y_pred),
+    by = c(
+      "Metadata_gene",
+      "Metadata_pert_iname_compound",
+      "y_actual"
+    ),
+    suffix = c("_compound", "_gene")
+  ) %>%
+    rowwise() %>%
+    mutate(y_prob = max(y_prob_gene, y_prob_compound)) %>%
+    ungroup() %>%
+    select(-y_prob_gene, -y_prob_compound) %>%
+    mutate(y_pred = y_prob > 0.5) %>%
+    select(Metadata_gene,
+           Metadata_pert_iname_compound,
+           y_actual,
+           y_prob,
+           y_pred) %>%
+    write_csv(
+      glue(
+        "../1.analysis/final_binary_predictions/{cosine_classifier}__pair__gene_compound.csv"
+      )
+    )
+}
+```
+
+
+```{r}
+c("cosineavg", "cosine1nn", "cosine5nn") %>%
+  walk(combine_gene_compound_prediction)
+```

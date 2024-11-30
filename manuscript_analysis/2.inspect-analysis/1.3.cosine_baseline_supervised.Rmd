@@ -1,0 +1,304 @@
+---
+title: "Cosine baseline - supervised"
+params:
+  formulation: compound
+  formulation_column: pert_iname_compound
+---
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+```
+
+```{r}
+stopifnot(params$formulation %in% c("gene", "compound", "pair"))
+stopifnot(
+  (
+    params$formulation == "gene" &
+      params$formulation_column == "gene"
+  ) |
+    (
+      params$formulation == "compound" &
+        params$formulation_column == "pert_iname_compound"
+    ) |
+    (
+      params$formulation == "pair" &
+        (
+          params$formulation_column == "pert_iname_compound" |
+            params$formulation_column == "gene"
+        )
+    )
+)
+```
+
+trimmed makes
+- gene -> gene
+- pert_iname_compound -> compound
+
+```{r}
+formulation_column_trimmed <- str_remove(params$formulation_column, "pert_iname_")
+```
+
+
+```{r}
+cat(yaml::as.yaml(params))
+```
+
+# Read profile cosine similarities
+
+```{r}
+sim_df <- arrow::read_parquet("output/standard_experiments_sim.parquet", show_col_types = FALSE)
+```
+
+Bug fix column name (otherwise it gets annoying later in this code)
+
+```{r}
+sim_df <-
+  sim_df %>%
+  rename_with(~str_replace(., "Metadata_genes", "Metadata_gene"), everything())
+```
+
+
+# Make predictions
+
+Read splits for the `compound` or `gene` formulation; the feature set does not matter
+
+```{r}
+splits <-
+  read_csv(glue("output/splits__{params$formulation}__crispr.csv.gz"), show_col_types = FALSE)
+```
+
+Save it as it's own splits file so that it can be read in later
+
+Call this the `compound`  or `gene` feature set because it uses compound or gene similarity
+
+```{r}
+splits %>%
+  write_csv(glue("output/splits__{params$formulation}__{formulation_column_trimmed}.csv.gz"))
+```
+
+
+```{r}
+# get test split
+splits_test <-
+  splits %>%
+  filter(split_set == "test") %>%
+  select(-split_set)
+
+# get train split
+splits_train <-
+  splits %>%
+  filter(split_set == "train") %>%
+  select(-split_set)
+```
+
+Augment the test split with connections from train:
+For each gene-compound pair, get either 
+
+- all compounds connected to the gene in train (for leave-out-compound)
+- all genes connected to the compound in train (for leave-out-gene)
+
+
+```{r}
+splits_test_aug <-
+  splits_test %>%
+  inner_join(
+    splits_train,
+    by = ifelse(
+      params$formulation_column == "pert_iname_compound",
+      "gene",
+      "pert_iname_compound"
+    ),
+    suffix = c("", "_train")
+  )
+
+rm(list = c("splits_test", "splits_train", "splits"))
+```
+
+Get similarity between
+
+- compounds (for leave-out-compound)
+- genes (for leave-out-gene)
+
+```{r}
+col1 <- sym(glue("Metadata_{params$formulation_column}1"))
+col2 <- sym(glue("Metadata_{params$formulation_column}2"))
+
+sim_df_modality <-
+  sim_df %>%
+  filter(Metadata_modality1 == Metadata_modality2) %>%
+  filter(Metadata_modality1 %in% ifelse(
+    params$formulation_column == "pert_iname_compound",
+    c("Compound"),
+    c("ORF", "CRISPR")
+  )) %>%
+  group_by(!!col1,
+           !!col2) %>%
+  summarise(sim = mean(sim), .groups = "keep") %>%
+  ungroup()
+```
+
+Rescale `sim` to stretch the range [-1,1] so that gene-gene and compound-compaund similarities are comparable. 
+Use rank to make it uniform
+
+```{r}
+sim_df_modality <-
+  sim_df_modality %>%
+  mutate(sim = 2 * rank(sim) / length(sim) - 1)
+```
+
+Augment splits_test_aug with compound similarities, and then compute weighted average of cosine similarity:
+
+- TRUE connections (is_connected==TRUE) are given a weight of +1
+- FALSE connections (is_connected==FALSE) are given a weight of -1
+
+```{r}
+join_cols <-
+  c(setNames(
+    nm = params$formulation_column,
+    glue("Metadata_{params$formulation_column}1")
+  ),
+  setNames(
+    nm = glue("{params$formulation_column}_train"),
+    glue("Metadata_{params$formulation_column}2")
+  ))
+
+join_cols
+
+splits_test_aug_modality <-
+  splits_test_aug %>%
+  inner_join(sim_df_modality, by = join_cols)
+```
+
+## Make predictions using averages of all neighbors
+
+```{r}
+splits_test_aug_modality_avg <-
+  splits_test_aug_modality %>%
+  group_by(
+    is_connected,
+    gene,
+    pert_iname_compound,
+    is_connected_train
+  ) %>%
+  summarize(sim = mean(sim), n = n(), .groups = "keep") %>%
+  mutate(is_connected_train_sign = if_else(is_connected_train, 1, -1)) %>%
+  group_by(is_connected, gene, pert_iname_compound) %>%
+  # smallest value (=-2) is when average of TRUE connections is -1 and average of FALSE connections is 1
+  # largest value (=2) is when average of TRUE connections is 1 and average of FALSE connections is -1
+  # normalize accordingly i.e (2 + x) / 4
+  summarize(y_prob = (2 + sum(is_connected_train_sign * sim)) / 4, .groups = "keep") %>%
+  ungroup()
+```
+
+Estimate positive fraction (prior)
+
+```{r}
+y_pos_frac <- sum(splits_test_aug_modality_avg$is_connected)/nrow(splits_test_aug_modality_avg)
+y_pos_thread <- quantile(splits_test_aug_modality_avg$y_prob, 1-y_pos_frac, names = FALSE)
+```
+
+Create prediction data frame
+
+```{r}
+prediction_df <- 
+  splits_test_aug_modality_avg %>%
+  select(Metadata_gene = gene,
+         Metadata_pert_iname_compound = pert_iname_compound,
+         y_actual = is_connected,
+         y_prob) %>%
+  mutate(y_pred = y_prob > y_pos_thread)
+```
+
+## Save predictions
+
+```{r}
+prediction_df %>%
+  write_csv(glue("../1.analysis/final_binary_predictions/cosineavg__{params$formulation}__{formulation_column_trimmed}.csv"))
+```
+
+## Make predictions using nearest-neighbor
+
+```{r}
+prediction_df <-
+  splits_test_aug_modality %>%
+  group_by(is_connected,
+           gene,
+           pert_iname_compound) %>%
+  arrange(desc(sim)) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  mutate(y_prob = if_else(is_connected_train, 1, -1) * (sim + 1) / 4 + 0.5,
+         y_pred = is_connected_train) %>%
+  select(
+    Metadata_gene = gene,
+    Metadata_pert_iname_compound = pert_iname_compound,
+    y_actual = is_connected,
+    y_prob,
+    y_pred
+  )
+```
+
+Sanity check
+
+```{r}
+modality_col <- sym(paste0("Metadata_", params$formulation_column))
+
+count_check_1 <- 
+  prediction_df %>%
+  mutate(x = ifelse(y_pred, y_prob, 1 - y_prob)) %>%
+  count(!!modality_col, x, name = "n_repeats") %>%
+  count(n_repeats)
+
+count_check_2 <-
+  prediction_df %>%
+  count(!!modality_col, name = "n_repeats") %>%
+  count(n_repeats)
+  
+compare::compare(
+  count_check_1, 
+  count_check_2, 
+  allowAll = T)
+```
+
+## Save predictions
+
+```{r}
+prediction_df %>%
+  write_csv(glue("../1.analysis/final_binary_predictions/cosine1nn__{params$formulation}__{formulation_column_trimmed}.csv"))
+```
+
+## Make predictions using 5-nearest-neighbor
+
+```{r}
+prediction_df <-
+  splits_test_aug_modality %>%
+  group_by(is_connected,
+           gene,
+           pert_iname_compound) %>%
+  arrange(desc(sim)) %>%
+  slice_head(n = 5) %>%
+  summarize(
+    y_prob = any(is_connected_train) * 1.0,
+    y_pred = any(is_connected_train),
+    .groups = "keep"
+  ) %>%
+  ungroup() %>%
+  select(
+    Metadata_gene = gene,
+    Metadata_pert_iname_compound = pert_iname_compound,
+    y_actual = is_connected,
+    y_prob,
+    y_pred
+  )
+```
+
+## Save predictions
+
+```{r}
+prediction_df %>%
+  write_csv(glue("../1.analysis/final_binary_predictions/cosine5nn__{params$formulation}__{formulation_column_trimmed}.csv"))
+```

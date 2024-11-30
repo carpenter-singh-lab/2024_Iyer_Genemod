@@ -1,0 +1,5 @@
+classifier,formulation,features
+transformerx,compound,crispr__consensus
+transformerx,compound,crispr_orf__consensus
+transformerx,compound,crispr__max_consensus
+transformerx,compound,crispr_orf__max_consensus

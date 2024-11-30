@@ -1,0 +1,6 @@
+classifier,formulation,features
+knn,pair,crispr_orf
+lightgbm,pair,crispr_orf
+logisticregression,pair,crispr_orf
+mlp,pair,crispr_orf
+randomforest,pair,crispr_orf

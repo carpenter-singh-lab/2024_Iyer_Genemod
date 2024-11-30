@@ -1,0 +1,291 @@
+---
+title: "Prepare data"
+format: gfm
+editor: visual
+---
+
+# Setup
+
+```{r}
+library(glue)
+library(tidyverse)
+set.seed(42)
+```
+
+```{r}
+input_path <- file.path("..", "2.inspect-analysis", "output")
+```
+
+```{r}
+save_df <- function(df, save_csv = TRUE) {
+  filename <- paste0("output/", deparse(substitute(df)))
+  if (save_csv) {
+    df %>% write_csv(paste0(filename, ".csv"))
+  }
+  df %>% arrow::write_parquet(paste0(filename, ".parquet"))
+}
+```
+
+# Prepare data
+
+## Metrics
+
+```{r}
+prediction_metrics_at_k_rel_bootstrap <- 
+  read_csv(file.path(input_path, "prediction_metrics_at_k_rel_bootstrap.csv"), show_col_types = FALSE)
+
+prediction_metrics_at_k_rel <-
+  read_csv(file.path(input_path, "prediction_metrics_at_k_rel.csv"), show_col_types = FALSE)
+```
+
+```{r}
+prediction_metrics_at_k_rel_bootstrap_melted <-
+  prediction_metrics_at_k_rel_bootstrap %>%
+  ungroup() %>%
+  mutate(formulation = str_replace(formulation, "pair", "either")) %>%
+  select(matches(
+    "classifier|formulation|features|precision|recall|oddsratio|prauc"
+  )) %>%
+  pivot_longer(-c(classifier, formulation, features), names_to = "metric") %>%
+  separate(metric,
+           into = c("metric", "statistic"),
+           sep = "_") %>%
+  pivot_wider(names_from = "statistic", values_from = "value")
+
+top_k_percent_rel <- mean(with(prediction_metrics_at_k_rel, p / n))
+```
+
+```{r}
+classifier_ <- c("transformer", "transformerx", "cosine1nn", "cosine")
+
+classifier_tag <- paste0(classifier_, collapse = "_")
+
+prediction_metrics_at_k_rel_bootstrap_melted_filtered <-
+  prediction_metrics_at_k_rel_bootstrap_melted %>%
+  filter(classifier %in% classifier_) %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+  filter(features %in% c("compound", "gene", "gene_compound", "crispr_orf_max")) %>%
+  filter(metric %in% c("precision")) %>%
+  unite(features_classifier, c("features", "classifier"), sep = "__")
+```
+
+```{r}
+filter_and_prepare_metrics <-
+  function(formulation_) {
+    
+    formulation_code <-
+      ifelse(formulation_ == "either",
+             "gene_compound",
+             formulation_)
+
+    features_classifier__model <- tribble(
+      ~ features_classifier, ~ model,
+      "compound__cosine1nn", "1-NN\n(cpd)",
+      "gene__cosine1nn", "1-NN\n(gene)",
+      "gene_compound__cosine1nn", "1-NN\n(gene+cpd)",
+      "crispr_orf_max__cosine", "gene-cpd\nsimil.",
+      "crispr_orf_max__transformer", "model\n(w embed.)",
+      "crispr_orf_max__transformerx", "model\n(w/o embed.)"
+    )
+    
+    model_ordering <- c("gene-cpd\nsimil.",
+                        "1-NN\n(cpd)",
+                        "1-NN\n(gene)",
+                        "1-NN\n(gene+cpd)",
+                        "model\n(w/o embed.)",
+                        "model\n(w embed.)")
+    
+    prediction_metrics_at_k_rel_bootstrap_melted_filtered_ <-
+      prediction_metrics_at_k_rel_bootstrap_melted_filtered %>%
+      filter(formulation %in% c(formulation_)) %>%
+      left_join(features_classifier__model, by = "features_classifier") %>%
+      mutate(model = factor(model, levels = model_ordering, ordered = TRUE))
+    
+    prediction_metrics_at_k_rel_bootstrap_melted_filtered_
+    
+  }
+
+```
+
+### Leave out compound
+
+```{r}
+prediction_metrics_at_k_rel_bootstrap_melted_filtered_compound <-
+  filter_and_prepare_metrics("compound")
+
+save_df(prediction_metrics_at_k_rel_bootstrap_melted_filtered_compound)
+```
+
+### Leave out gene
+
+```{r}
+prediction_metrics_at_k_rel_bootstrap_melted_filtered_gene <-
+  filter_and_prepare_metrics("gene")
+
+save_df(prediction_metrics_at_k_rel_bootstrap_melted_filtered_gene)
+```
+
+### Leave out either
+
+```{r}
+prediction_metrics_at_k_rel_bootstrap_melted_filtered_either <-
+  filter_and_prepare_metrics("either")
+
+save_df(prediction_metrics_at_k_rel_bootstrap_melted_filtered_either)
+```
+
+## Training bias
+
+```{r}
+training_bias <-
+  read_csv(file.path(input_path, "training_bias.csv"), show_col_types = FALSE)
+
+training_bias <-
+  training_bias %>%
+  filter(classifier %in% c("transformer", "transformerx", "cosine", "cosine1nn", "cosine5nn", "cosineavg")) %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+  mutate(formulation = str_replace(formulation, "pair", "either")) %>%
+  mutate(connected_genes_train = replace_na(connected_genes_train, "")) %>%
+  mutate(connected_compounds_train = replace_na(connected_compounds_train, ""))
+```
+
+```{r}
+save_df(training_bias)
+```
+
+## Edge counts
+
+```{r}
+true_test_edge_counts <-
+  training_bias %>%
+  filter(classifier == "transformer" & features == "orf") %>%
+  mutate(which_connected_train =
+           fct_relevel(
+             which_connected_train,
+             c("both", "compound", "gene", "neither")
+           )) %>%
+  count(formulation, which_connected_train) %>%
+  arrange(formulation, desc(which_connected_train)) %>%
+  group_by(formulation) %>%
+  mutate(label_y = cumsum(n))
+```
+
+```{r}
+save_df(true_test_edge_counts)
+```
+
+## Edge percentiles across counts
+
+```{r}
+prediction_df_top <- arrow::read_parquet("output/prediction_df_top.parquet")
+```
+
+```{r}
+prediction_df_transformer <-
+  prediction_df_top %>%
+  mutate(formulation = str_replace(formulation, "pair", "either")) %>%
+  inner_join(
+    tribble(~classifier, ~formulation,
+            "transformer", "compound",
+            "transformer", "gene",
+            "transformer", "either"),
+    by = join_by(classifier, formulation)
+    ) %>%
+  filter(y_actual == 1) %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+  inner_join(
+    training_bias %>%
+      select(
+        pert_iname_compound,
+        gene,
+        formulation,
+        features,
+        which_connected_train,
+        n_connected_genes_train,
+        n_connected_compounds_train,
+        connected_genes_train,
+        connected_compounds_train
+      ) %>% distinct(),
+    by = join_by(
+      pert_iname_compound,
+      gene,
+      formulation,
+      features
+    )
+  ) %>%
+  rename(n_genes = n_connected_genes_train,
+         n_cpds = n_connected_compounds_train)
+```
+
+```{r}
+prediction_df_transformer_full <-
+  prediction_df_top %>%
+  mutate(formulation = str_replace(formulation, "pair", "either")) %>%
+  inner_join(
+    tribble(~classifier, ~formulation,
+            "transformer", "compound",
+            "transformer", "gene",
+            "transformer", "either"),
+    by = join_by(classifier, formulation)
+    ) %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg"))
+```
+
+```{r}
+condition_positive <-
+  prediction_df_top %>%
+  group_by(classifier, formulation, features) %>%
+  summarize(p = sum(y_actual),
+            n = n(),
+            p_frac = p / n, 
+            .groups = "keep") %>%
+  ungroup() %>%
+  group_by(formulation, features) %>%
+  summarise(p_frac_min = min(p_frac),
+            p_frac_max = max(p_frac), 
+            .groups = "keep")
+```
+
+```{r}
+stopifnot(nrow(condition_positive %>% filter(p_frac_min != p_frac_max)) == 0)
+
+condition_positive <-
+  condition_positive %>%
+  rename(p_frac = p_frac_min) %>%
+  select(-p_frac_max)
+```
+
+```{r}
+features_i <- "crispr_orf_max"
+
+condition_positive_crispr_orf_max <-
+  condition_positive %>%
+  filter(features == features_i &
+           formulation %in% c("compound", "either", "gene"))
+
+# Create filter criteria
+transformer_criteria <- tribble(
+  ~classifier, ~formulation,
+  "transformer", "compound",
+  "transformer", "gene",
+  "transformer", "either"
+)
+
+prediction_df_transformer_crispr_orf_max <- prediction_df_transformer %>%
+  inner_join(transformer_criteria, by = c("classifier", "formulation")) %>%
+  filter(features == features_i)
+
+prediction_df_transformer_crispr_orf_max_full <- prediction_df_transformer_full %>%
+  inner_join(transformer_criteria, by = c("classifier", "formulation")) %>%
+  filter(features == features_i)
+```
+
+```{r}
+save_df(condition_positive_crispr_orf_max)
+save_df(prediction_df_transformer_crispr_orf_max, save_csv = FALSE)
+save_df(prediction_df_transformer_crispr_orf_max_full, save_csv = FALSE)
+```

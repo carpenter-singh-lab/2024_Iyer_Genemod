@@ -1,0 +1,290 @@
+---
+title: "Inspect metadata used in predictive models"
+---
+
+Here, we compare the connections used for predictive modeling
+("current connections"), with the expanded list of connections
+("updated connections") generated in `0.inspect-metadata/0.update-metadata.Rmd`  (`0.inspect-metadata/output/JUMP-Target_compounds_crispr_orf_connections.csv`)
+
+See https://github.com/jump-cellpainting/genemod/issues/5#issuecomment-831236914
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+source("utils.R")
+```
+
+# Read data
+
+@danieljmichael said:
+
+All of the possible splits we consider are in the `splits/` directory.
+
+The naming convention I use is `{formulation}__{features}__{train|val|test}.csv`.
+
+So as an example, `compound__crispr_orf__test.csv` contains the test set for the
+leave out compound split with CRISPR+ORF features.
+
+The binary_predictions directory contains the binary predictions and predicted
+probabilities for each sample in the test set for each possible split.
+
+
+```{r}
+get_connections_from_splits <- function(formulation, features) {
+  map_dfr(c("train", "test", "val"),
+          function(split_set_i) {
+            read_csv(
+              glue(
+                "../1.analysis/splits2/{formulation}__{features}__{split_set_i}.csv"
+              ),
+              col_types = cols()
+            ) %>%
+              process_metadata()
+          }) %>%
+    arrange(across(everything()))
+}
+```
+
+## Get connections from the pair:crispr_orf configuration
+
+```{r}
+current_connections_raw <-
+  get_connections_from_splits(formulation = "pair",
+                              features = "crispr_orf"
+    )
+```
+
+## Compare other configurations with the reference configuration
+
+```{r}
+formulation_features <-
+  read_csv("input/formulation_features_transformer.csv",
+           col_types = cols(.default = col_character()))
+```
+
+
+```{r}
+inspect_formulation_features <- function(formulation_features_df) {
+
+  current_connections_raw_i <-
+    get_connections_from_splits(formulation = formulation_features_df$formulation,
+                                features = formulation_features_df$features)
+
+  common_cols <- intersect(names(current_connections_raw_i),
+                           names(current_connections_raw))
+
+  df_ref <- current_connections_raw %>% select(all_of(common_cols))
+  df_i <- current_connections_raw_i %>% select(all_of(common_cols))
+
+  equal_ref <- all(all.equal(df_ref, df_i) == TRUE)
+
+  subset_ref <- df_i %>% anti_join(df_ref) %>% nrow() == 0
+
+  data.frame(nrow = nrow(df_i), equal_ref = equal_ref, subset_ref = subset_ref)
+
+}
+```
+
+
+```{r}
+inpsect_formulation_features_df <-
+  formulation_features %>%
+  group_by(formulation, features) %>%
+  summarise(inspect_formulation_features(cur_group()), .groups = "keep")
+```
+
+
+```{r rows.print=20}
+inpsect_formulation_features_df %>%
+  arrange(formulation, features)
+```
+
+# Compare current connections with updated connections
+
+This is the updated list of gene-compound connections
+
+```{r}
+updated_connections <-
+  read_csv("../0.inspect-metadata/output/JUMP-Target_compounds_crispr_orf_connections.csv",
+           col_types = cols()) %>%
+  select(pert_id_compound, broad_sample_orf, broad_sample_crispr, pert_iname_compound, gene)
+```
+
+
+```{r}
+current_connections <-
+  current_connections_raw %>%
+  select(pert_id_compound, broad_sample_orf, broad_sample_crispr, y) %>%
+  mutate(is_connected = y == 1) %>%
+  select(-y)
+```
+
+Add `pert_iname_compound` and `gene` columns to `current_connections`
+
+```{r}
+current_connections <-
+  current_connections %>%
+  inner_join(updated_connections %>% distinct(pert_id_compound, pert_iname_compound)) %>%
+  inner_join(updated_connections %>% distinct(broad_sample_orf, gene))
+```
+
+## Current connections
+
+Counting compounds with different `pert_id`s separately
+
+```{r}
+current_connections %>%
+  filter(is_connected) %>%
+  count()
+```
+
+NOT counting compounds with different `pert_id`s separately; this is the right way to do it.
+
+```{r}
+current_connections %>%
+  filter(is_connected) %>%
+  select(-pert_id_compound) %>%
+  distinct() %>%
+  count()
+```
+
+```{r}
+current_connections %>%
+  filter(is_connected) %>%
+  select(pert_iname_compound, gene) %>%
+  distinct() %>%
+  count()
+```
+
+```{r}
+current_connections %>%
+  filter(is_connected) %>%
+  distinct(pert_iname_compound) %>%
+  count()
+```
+
+```{r}
+current_connections %>%
+  filter(is_connected) %>%
+  distinct(gene) %>%
+  count()
+```
+
+
+## Updated connections
+
+Counting compounds with different `pert_id`s separately
+
+```{r}
+updated_connections %>%
+  count()
+```
+
+NOT counting compounds with different `pert_id`s separately; this is the right way to do it.
+
+```{r}
+updated_connections %>%
+  select(-pert_id_compound) %>%
+  distinct() %>%
+  count()
+```
+
+NOT counting compounds with different `pert_id`s separately, and only focusing on
+gene-compound connections (ignore the actual ORF and CRISPRs involved)
+
+```{r}
+updated_connections %>%
+  select(pert_iname_compound, gene) %>%
+  distinct() %>%
+  count()
+```
+
+```{r}
+updated_connections %>%
+  distinct(pert_iname_compound) %>%
+  count()
+```
+
+
+```{r}
+updated_connections %>%
+  distinct(gene) %>%
+  count()
+```
+
+## Current ∩ Updated connections
+
+Counting compounds with different `pert_id`s separately
+
+```{r}
+current_connections %>%
+  filter(is_connected) %>%
+  inner_join(updated_connections) %>%
+  distinct() %>%
+  count()
+```
+
+NOT counting compounds with different `pert_id`s separately; this is the right way to do it.
+
+```{r}
+current_connections %>%
+  filter(is_connected) %>%
+  select(-pert_id_compound) %>%
+  distinct() %>%
+  inner_join(updated_connections %>%
+               select(-pert_id_compound) %>%
+               distinct()) %>%
+  distinct() %>%
+  count()
+```
+
+## Extra connections
+
+Are there any tuples marked as `is_connected` that are absent in the updated connections?
+
+```{r}
+current_connections %>%
+  select(-pert_id_compound) %>%
+  distinct() %>%
+  filter(is_connected) %>%
+  anti_join(updated_connections %>%   select(-pert_id_compound) %>%
+              distinct()) %>%
+  distinct()
+```
+
+## Missing connections
+
+Are there any tuples not marked as `is_connected` that are present in the updated connections?
+
+NOT counting compounds with different `pert_id`s separately; this is the right way to do it.
+
+```{r}
+updated_connections %>%
+  select(-pert_id_compound) %>%
+  distinct() %>%
+  anti_join(
+    current_connections %>%
+      select(-pert_id_compound) %>%
+      distinct() %>%
+      filter(is_connected)
+  )
+```
+
+Filter the list down to the gene-compound pairs (using `pert_iname` for compounds)
+
+```{r}
+updated_connections %>%
+  select(-pert_id_compound) %>%
+  distinct() %>%
+  anti_join(
+    current_connections %>%
+      select(-pert_id_compound) %>%
+      distinct() %>%
+      filter(is_connected)
+  ) %>%
+  distinct(gene, pert_iname_compound) %>%
+  arrange(gene)
+```

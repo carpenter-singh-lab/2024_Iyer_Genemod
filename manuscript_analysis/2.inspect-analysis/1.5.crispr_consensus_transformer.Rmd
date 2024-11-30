@@ -1,0 +1,100 @@
+---
+title: "Compute CRISPR consensus predictions for transformer predictions"
+output: html_notebook
+---
+
+```{r}
+library(glue)
+library(tidyverse)
+```
+
+```{r}
+JUMP_Target_compounds_crispr_orf_connections <-
+  read_csv(
+    "../1.analysis/data/JUMP-Target_compounds_crispr_orf_connections.csv"
+  )
+```
+
+
+```{r}
+crispr_gene <-
+  JUMP_Target_compounds_crispr_orf_connections %>% 
+  distinct(gene, broad_sample_crispr) %>% 
+  select(Metadata_genes_CRISPR = gene,
+         Metadata_broad_sample_CRISPR = broad_sample_crispr)
+```
+
+
+```{r}
+formulation_features_transformer_crispr <- 
+  read_csv("input/formulation_features_transformer.csv") %>%
+  filter(str_detect(features, "crispr")) %>% 
+  distinct()
+
+formulation_features_transformer_crispr
+```
+
+```{r}
+formulation_features_transformerx_crispr <- 
+  read_csv("input/formulation_features_transformerx.csv") %>%
+  filter(str_detect(features, "crispr")) %>% 
+  distinct()
+
+formulation_features_transformerx_crispr
+```
+
+```{r}
+bind_rows(
+  formulation_features_transformer_crispr,
+  formulation_features_transformerx_crispr
+) %>%
+  pwalk(function(classifier, formulation, features) {
+    df <-
+      read_csv(
+        glue(
+          "../1.analysis/final_binary_predictions/{classifier}__{formulation}__{features}.csv"
+        ),
+        show_col_types = FALSE
+      )
+    
+    df <-
+      df %>%
+      inner_join(crispr_gene, by = "Metadata_broad_sample_CRISPR") %>%
+      select(-any_of(
+        c(
+          "Metadata_broad_sample_CRISPR",
+          "Metadata_broad_sample_ORF"
+        )
+      )) %>%
+      select(Metadata_genes_CRISPR,
+             Metadata_broad_sample_Compound,
+             y_actual,
+             y_prob) %>%
+      group_by(Metadata_genes_CRISPR, Metadata_broad_sample_Compound)
+    
+    # y_prob - this is the only column for which we need to compute the mean per group
+    # y_actual - this is identical across rows in the same group, so computing the mean is trivially ok
+    # y_pred - this needs to be recomputed after computing y_prob
+    df %>%
+      summarise(across(everything(), mean), .groups = "keep") %>%
+      ungroup() %>%
+      mutate(y_pred = (y_prob > 0.5) * 1.) %>%
+      write_csv(
+        glue(
+          "../1.analysis/final_binary_predictions/{classifier}__{formulation}__{features}__consensus.csv"
+        )
+      )
+    
+    # same as above (here, we compute the max instead of the mean)
+    df %>%
+      summarise(across(everything(), max), .groups = "keep") %>%
+      ungroup() %>%
+      mutate(y_pred = (y_prob > 0.5) * 1.) %>%
+      write_csv(
+        glue(
+          "../1.analysis/final_binary_predictions/{classifier}__{formulation}__{features}__max_consensus.csv"
+        )
+      )
+    
+  })
+```

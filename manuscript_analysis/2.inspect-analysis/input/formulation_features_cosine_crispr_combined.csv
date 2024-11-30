@@ -1,0 +1,13 @@
+classifier,formulation,features
+cosine,compound,crispr__consensus
+cosine,compound,crispr_orf__consensus
+cosine,gene,crispr__consensus
+cosine,gene,crispr_orf__consensus
+cosine,pair,crispr__consensus
+cosine,pair,crispr_orf__consensus
+cosine,compound,crispr__max_consensus
+cosine,compound,crispr_orf__max_consensus
+cosine,gene,crispr__max_consensus
+cosine,gene,crispr_orf__max_consensus
+cosine,pair,crispr__max_consensus
+cosine,pair,crispr_orf__max_consensus

@@ -1,0 +1,255 @@
+---
+title: "Inspect split consistency (again)"
+---
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+```
+
+# Why we no longer use leave-out-compound-together
+
+## Read splits
+
+```{r}
+formulation_features <- 
+  read_csv("input/formulation_features_transformer.csv", 
+           col_types = cols(.default = col_character()))
+
+```
+
+```{r}
+splits_df <-
+  formulation_features %>%
+  select(formulation, features) %>%
+  pmap_dfr(function(formulation, features) {
+    splits <-
+      read_csv(glue("output/splits__{formulation}__{features}.csv.gz"),
+               col_types = cols())  %>%
+      arrange(across(everything())) %>%
+      mutate(formulation = formulation,
+             features = features) %>%
+      distinct()
+  })
+```
+
+## Check
+
+Check if this holds up:
+
+> In the leave-out-compound formulation, we know that the train and test sets have non-overlapping sets of compounds. So a test gene can be seen with a different compound during training which may or may not be a "sister compound" of the test compound. Similarly, in leave-out-compound-together, a test gene can be seen with a different compound during training, but we can guarantee the training compound is NOT a sister compound of the test compound. As a reminder, sister compounds refer to compounds that are distinct but share a gene target.
+
+Get splits for a formulation-features pair, drop validation set (we only care about traina and test)
+
+```{r}
+splits_x <-
+  splits_df %>%
+  ungroup %>%
+  inner_join(
+    data.frame(
+      classifier = "transformer",
+      formulation = "compound_together",
+      features = "orf"
+    )
+  ) %>%
+  filter(is_connected) %>%
+  filter(split_set != "val")
+```
+
+Get list of genes that are in a true connection in both train and test
+
+```{r}
+gene_list <-
+  splits_x %>%
+  distinct(gene, split_set) %>%
+  count(gene) %>%
+  filter(n > 1) %>%
+  select(-n)
+```
+
+For each gene, list the true connections in test set and in train set
+
+```{r}
+splits_x %>%
+  select(gene, split_set, pert_iname_compound) %>%
+  inner_join(gene_list, by = "gene") %>%
+  arrange(gene, split_set, pert_iname_compound) %>%
+  group_by(gene, split_set) %>%
+  summarize(pert_iname_compounds = str_c(pert_iname_compound, collapse = ","))
+```
+
+Regarding compound-together: I think I know what's going on. It looks like the definition of "sister compound" uses the target annotations that were available in the normalized_feature_select_negcon.csv file that [we](https://github.com/jump-cellpainting/genemod/blob/e0e2047752d2152c94893c02ccd342d2b4a7139f/1.analysis/code/utils_stanford.py#L112) load (which in turn gets its annotations from [here](https://github.com/jump-cellpainting/pilot-cpjump1-analysis/blob/e9e5b7d3ea0d5b8e9a162598fa838b036976e8e0/1.cpjump1-analysis/input/JUMP-Target_compound_metadata.tsv)). This file contains only a single target per compound vs multiple targets per compound that we [use](https://github.com/jump-cellpainting/genemod/blob/e0e2047752d2152c94893c02ccd342d2b4a7139f/1.analysis/code/utils_stanford.py#L41-L46) in the rest of our analysis.
+
+The single target picked is [arbitrary](https://github.com/jump-cellpainting/pilot-cpjump1-analysis/issues/4#issuecomment-1024138895), so we will compound-together from our analysis completely, because it's essentially not very different from leave-out-compound (just that there are fewer sisters, but not no sisters, across train and test). Thankfully, leave-out-gene provides a very similar configuration (I think), so we don't lose out much.
+
+# Check leave-out-pair 
+
+## Read original gene-compound matrix
+
+```{r}
+x0 <-
+  read_tsv("../0.inspect-metadata/output/JUMP-Target_gene_compound_matrix.txt") %>%
+  pivot_longer(-pert_iname_compound,
+               names_to = "gene",
+               values_to = "is_connected") %>%
+  mutate(is_connected = is_connected == 1) %>%
+  mutate(pert_iname_compound = as.factor(pert_iname_compound),
+         gene = as.factor(gene))
+```
+
+
+```{r}
+x0 %>% 
+  count(is_connected)
+```
+## Specify counts in the specific split we use
+
+```{r}
+training_bias_counts_genemod <- 
+  data_frame(both = 42, compound = 32, gene =  5, neither = 23)
+```
+
+
+```{r}
+splits_genemod <-
+  splits_df %>%
+  ungroup %>%
+  inner_join(
+    data.frame(
+      classifier = "transformer",
+      formulation = "pair",
+      features = "orf"
+    )
+  ) %>%
+  select(split_set, is_connected, gene, pert_iname_compound) %>%
+  arrange(split_set, is_connected, gene, pert_iname_compound) %>%
+    mutate(across(c(gene, pert_iname_compound), as.factor))
+
+```
+
+```{r}
+create_splits <- function(x) {
+  x %>%
+    mutate(s = runif(nrow(.))) %>%
+    mutate(split_set = case_when(
+      between(s, 0.0, 0.6) ~ "train",
+      between(s, 0.6, 0.8) ~ "test",
+      between(s, 0.8, 1.0) ~ "validate"
+    )) %>%
+    select(-s) %>%
+    mutate(across(c(gene, pert_iname_compound), as.factor)) %>%
+    select(split_set, is_connected, gene, pert_iname_compound) %>%
+    arrange(split_set, is_connected, gene, pert_iname_compound) 
+}
+```
+
+
+```{r}
+get_training_bias_counts <- function(splits_i) {
+  splits_i <-
+    splits_i %>%
+    filter(is_connected)
+  
+  gene_train_count <-
+    splits_i %>%
+    filter(split_set == "train") %>%
+    count(gene, name = "n_connected_compounds_train", .drop = FALSE)
+  
+  compound_train_count <-
+    splits_i %>%
+    filter(split_set == "train") %>%
+    count(pert_iname_compound, name = "n_connected_genes_train", .drop = FALSE)
+  
+  training_bias <-
+    splits_i %>%
+    filter(split_set == "test") %>%
+    inner_join(gene_train_count, by = "gene") %>%
+    inner_join(compound_train_count, by = "pert_iname_compound") %>%
+    rowwise() %>%
+    mutate(which_connected_train = case_when(
+      (n_connected_compounds_train == 0) &
+        (n_connected_genes_train == 0) ~ "neither",
+      (n_connected_compounds_train == 0) &
+        (n_connected_genes_train  > 0) ~ "gene",
+      (n_connected_compounds_train >  0) &
+        (n_connected_genes_train == 0) ~ "compound",
+      (n_connected_compounds_train >  0) &
+        (n_connected_genes_train  > 0) ~ "both"
+    )) %>%
+    ungroup() %>%
+    mutate(which_connected_train = factor(which_connected_train, levels = c("both", "compound", "gene", "neither"))) 
+  
+  training_bias %>% 
+    count(which_connected_train, .drop = FALSE) %>% pivot_wider(names_from = "which_connected_train", values_from = n, values_fill = 0)
+
+}
+```
+
+```{r}
+training_bias_counts_genemod
+
+splits_genemod %>%
+  get_training_bias_counts()
+```
+
+```{r}
+x0 %>%
+  create_splits() %>%
+  get_training_bias_counts()
+```
+
+```{r eval=TRUE}
+training_bias_counts <- 
+  seq(1000) %>%
+  map_df(~get_training_bias_counts(create_splits(x0)))
+
+training_bias_counts %>%
+  write_csv("output/training_bias_counts_simulations.csv")
+```
+
+
+```{r}
+training_bias_counts <-
+  read_csv("output/training_bias_counts_simulations.csv")
+```
+
+
+```{r}
+training_bias_counts <- 
+  training_bias_counts %>%
+  mutate(both_frac     = both     / (both + gene + compound + neither),
+         compound_frac = compound / (both + gene + compound + neither),
+         gene_frac     = gene     / (both + gene + compound + neither),
+         neither_frac  = neither  / (both + gene + compound + neither))
+
+training_bias_counts_genemod <-
+  training_bias_counts_genemod %>%
+  mutate(both_frac     = both     / (both + gene + compound + neither),
+         compound_frac = compound / (both + gene + compound + neither),
+         gene_frac     = gene     / (both + gene + compound + neither),
+         neither_frac  = neither  / (both + gene + compound + neither))
+```
+
+
+```{r}
+training_bias_counts %>%
+  select(matches("frac")) %>%
+  pivot_longer(everything(), names_to = "which_connected", values_to = "frac") %>%
+  ggplot(aes(frac)) + 
+  geom_histogram(bins = 100) +
+  geom_vline(data = 
+               training_bias_counts_genemod %>%
+               select(matches("frac")) %>%
+               pivot_longer(everything(), 
+                            names_to = "which_connected", 
+                            values_to = "frac"),
+             aes(xintercept = frac),
+             color = "red"
+             ) +
+  facet_wrap(~which_connected) 
+```
+
+The counts we have in genemod are not rare after all (although `compound` is on the lower side, and `neither` on the higher side though)

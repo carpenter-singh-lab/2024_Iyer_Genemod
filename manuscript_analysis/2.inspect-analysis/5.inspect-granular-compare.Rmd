@@ -1,0 +1,1065 @@
+---
+title: "Inspect granular"
+params:
+  percentile_threshold: 0.02
+---
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+set.seed(42)
+```
+
+```{r}
+palette_manual_dark_2 <- c("#1B9E77", "#D95F02", "#E6AB02", "#7570B3")
+```
+
+# Read
+
+```{r message=FALSE}
+training_bias <- read_csv("output/training_bias.csv")
+
+splits <- read_csv("output/splits_collated.csv.gz")
+
+prediction_df <-  read_csv("output/prediction_df_augmented.csv.gz")
+```
+
+```{r}
+prediction_df <-
+  prediction_df %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+  group_by(pert_iname_compound, gene, classifier, formulation, features) %>%
+  arrange(desc(gene_compound_global_pct), .by_group = TRUE) %>%
+  slice_head(n = 1) %>%
+  ungroup()
+```
+
+
+```{r}
+training_bias <-
+  training_bias %>%
+  filter(classifier %in% c("transformer", "transformerx", "cosine", "cosine1nn", "cosine5nn", "cosineavg")) %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+  mutate(connected_genes_train = replace_na(connected_genes_train, "")) %>%
+  mutate(connected_compounds_train = replace_na(connected_compounds_train, ""))
+```
+
+# Inspect
+
+## Compare cosine1nn vs transformer
+
+```{r}
+k <- 1
+
+prediction_df_transformer <-
+  prediction_df %>%
+  inner_join(
+    tribble(~classifier, ~formulation,
+            "transformer", "compound",
+            "transformer", "gene",
+            "transformer", "pair"
+            )
+  )
+
+prediction_df_transformerx <-
+  prediction_df %>%
+  inner_join(
+    tribble(~classifier, ~formulation,
+            "transformerx", "compound"
+            )
+  )
+
+prediction_df_cosineknn <-
+  prediction_df %>%
+  inner_join(
+    tribble(~classifier, ~formulation,
+            glue("cosine{k}nn"), "compound",
+            glue("cosine{k}nn"), "gene",
+            glue("cosine{k}nn"), "pair")
+  )
+
+# this join can (and does in this case) result in a duplication of rows because
+# ("pert_iname_compound", "gene") is not uniqe
+# e.g. (BVT-948, PTPN2) occurs twice 
+prediction_df_compare_classifier <-
+  inner_join(
+    prediction_df_transformer,
+    prediction_df_cosineknn,
+    by = c("pert_iname_compound", "gene", "formulation", "y_actual"),
+    suffix = c("_transformer", "_cosineknn")
+  )
+
+prediction_df_compare_classifier %>%
+  count(formulation, features_transformer, y_actual)
+
+# this join can (and does in this case) result in a duplication of rows 
+# (same as above)
+prediction_df_compare_classifierx <-
+  inner_join(
+    prediction_df_transformer,
+    prediction_df_transformerx,
+    by = c("pert_iname_compound", "gene", "formulation", "y_actual"),
+    suffix = c("_transformer", "_transformerx")
+  )
+
+prediction_df_compare_classifierx %>%
+  count(formulation, features_transformerx, y_actual)
+
+```
+
+```{r}
+prediction_df_compare_classifier_trimmed <-
+  prediction_df_compare_classifier %>%
+  filter(y_actual == 1) %>%
+  select(
+    pert_iname_compound,
+    gene,
+    y_prob_cosineknn,
+    gene_compound_global_pct_transformer,
+    y_prob_transformer,
+    y_actual,
+    features_transformer,
+    features_cosineknn,
+    formulation,
+    classifier_transformer,
+    classifier_cosineknn
+  ) %>%
+  arrange(
+    formulation,
+    features_transformer,
+    features_cosineknn,
+    classifier_transformer,
+    classifier_cosineknn,
+    y_prob_cosineknn,
+    gene_compound_global_pct_transformer
+  )
+
+prediction_df_compare_classifier_trimmed %>%
+  write_csv("output/prediction_df_compare_classifier_trimmed.csv")
+```
+
+```{r}
+prediction_df_compare_classifier_transformer_better <-
+  prediction_df_compare_classifier_trimmed %>%
+  filter(
+    gene_compound_global_pct_transformer < params$percentile_threshold &
+      y_prob_cosineknn < 0.5
+  ) %>%
+  select(
+    pert_iname_compound,
+    gene,
+    gene_compound_global_pct_transformer,
+    y_prob_transformer,
+    formulation,
+    features_transformer,
+    features_cosineknn,
+    classifier_transformer,
+    classifier_cosineknn
+  ) %>%
+  arrange(
+    formulation,
+    features_transformer,
+    features_cosineknn,
+    classifier_transformer,
+    classifier_cosineknn,
+    gene_compound_global_pct_transformer
+  ) %>%
+  inner_join(
+    training_bias %>%
+      select(
+        pert_iname_compound,
+        gene,
+        formulation,
+        features,
+        which_connected_train,
+        n_connected_genes_train,
+        n_connected_compounds_train,
+        connected_genes_train,
+        connected_compounds_train
+      ) %>% distinct(),
+    by = c(
+      "pert_iname_compound",
+      "gene",
+      "formulation",
+      "features_transformer" = "features"
+    )
+  )
+
+prediction_df_compare_classifier_transformer_better %>%
+  write_csv(glue("output/prediction_df_compare_classifier_transformer_better_at_top{k}.csv", k = params$percentile_threshold * 100))
+```
+
+
+```{r rows.print=30}
+prediction_df_compare_classifier_transformer_better %>%
+  count(formulation, features_cosineknn, features_transformer)
+```
+
+
+```{r}
+prediction_df_compare_classifier %>%
+  filter(y_actual == 1) %>%
+  inner_join(data.frame(formulation = "compound", features_transformer = "orf")) %>%
+  count(gene, pert_iname_compound) %>%
+  filter(n > 1)
+```
+
+
+```{r}
+prediction_df_compare_classifier %>%
+  select(formulation, pert_iname_compound, gene, y_actual) %>%
+  distinct() %>%
+  count(formulation, y_actual) %>%
+  pivot_wider(names_from = "y_actual", names_prefix = "y_actual_", values_from = "n") %>%
+  mutate(positive_frac = round(y_actual_1 / (y_actual_0 + y_actual_1), 3))
+```
+```{r}
+p <-
+  prediction_df_compare_classifier %>%
+  filter(y_actual == 1) %>%
+  ggplot(aes(y_prob_cosineknn >= 0.5, gene_compound_global_pct_transformer)) +
+  geom_dotplot(
+      binaxis = "y",
+      stackdir = "center",
+      dotsize = 5,
+      stroke = 0,
+      position = "dodge",
+      binpositions = "all",
+      stackgroups = TRUE,
+      binwidth = .02
+    ) +
+  scale_y_log10() +
+  geom_hline(yintercept = params$percentile_threshold, color = "red", alpha = 0.5) +
+  facet_grid(features_transformer ~ formulation + features_cosineknn, labeller = labeller(.cols = label_both)) +
+  xlab("cosine 1-NN prediction") +
+  ylab("Connection percentile\n(test)") +
+  ggtitle("Relationship between cosine 1-nn and transformer",
+          subtitle = "Transformer works mostly when 1-nn is correct") +
+  labs(caption = glue("Each point is a true gene-compound connection (test)\nRed line is {k}%",
+                      k = params$percentile_threshold * 100)) +
+  theme(
+      plot.caption = element_text(face = "italic"),
+      legend.position = "bottom"
+    )
+```
+
+
+```{r fig.height=4, fig.width=2}
+print(p)
+```
+
+```{r}
+ggsave("output/relationship_transformer_vs_cosine_a.png", p, width = 9, height = 8)
+```
+
+```{r}
+compute_precision <-
+  function(y_actual, y_pred) {
+
+    stopifnot(all(y_actual %in% c(FALSE, TRUE)))
+
+    stopifnot(all(y_pred %in% c(FALSE, TRUE)))
+
+    df <-
+      data.frame(y_actual, y_pred) %>%
+      arrange(desc(y_pred))
+
+    # n: total number of data points
+    n <- length(y_actual)
+
+    # p: condition positive
+    p <- sum(y_actual)
+
+    # pp: predicted condition positive
+    pp <- sum(y_pred)
+
+    # tp: true positive
+    tp <- sum(df$y_actual[1:pp])
+
+    precision <- tp / pp
+
+    data.frame(precision, tp, pp, p)
+  }
+
+prediction_df_compare_classifier_metrics <-
+  prediction_df_compare_classifier %>%
+  mutate(y_pred_cosineknn = y_prob_cosineknn >= 0.5) %>%
+  group_by(classifier_transformer,
+           classifier_cosineknn,
+           formulation,
+           features_transformer,
+           features_cosineknn) %>%
+  summarize(compute_precision(y_actual, y_pred_cosineknn), .groups = "keep")
+
+```
+
+Confirm that, for the leave-out-compound formulation, all compounds in test are predicted to be a true connection to a gene
+
+```{r}
+prediction_df_compare_classifier %>%
+  mutate(y_pred_cosineknn = y_prob_cosineknn >= 0.5) %>%
+  count(classifier_transformer,
+           classifier_cosineknn,
+           formulation,
+           features_transformer,
+           features_cosineknn,
+           pert_iname_compound,
+           y_pred_cosineknn) %>%
+  pivot_wider(names_from = y_pred_cosineknn, names_prefix = "y_pred_cosineknn_", values_from = "n") %>%
+  filter(is.na(y_pred_cosineknn_TRUE) & formulation == "compound")
+```
+
+Confirm that p = pp makes sense
+
+```{r}
+prediction_df_compare_classifier_per_cpd_counts <-
+  prediction_df_compare_classifier %>%
+  mutate(y_pred_cosineknn = y_prob_cosineknn >= 0.5) %>%
+  group_by(
+    classifier_transformer,
+    classifier_cosineknn,
+    formulation,
+    features_transformer,
+    features_cosineknn,
+    pert_iname_compound
+  ) %>%
+  summarize(
+    n_y_actual_true = sum(y_actual),
+    n_y_pred_cosineknn_true = sum(y_pred_cosineknn),
+    .groups = "keep"
+  ) %>%
+  ungroup() %>%
+  group_by(
+    classifier_transformer,
+    classifier_cosineknn,
+    formulation,
+    features_transformer,
+    features_cosineknn
+  ) %>%
+  summarize(
+    n_y_actual_true_mean = mean(n_y_actual_true),
+    n_y_pred_cosineknn_true_mean = mean(n_y_pred_cosineknn_true),
+    n_y_actual_true_sum = sum(n_y_actual_true),
+    n_y_pred_cosineknn_true_sum = sum(n_y_pred_cosineknn_true),
+    n = n(),
+    .groups = "keep"
+  ) %>%
+  ungroup()
+
+
+prediction_df_compare_classifier_per_cpd_counts %>%
+  pivot_longer(c(n_y_actual_true_mean, n_y_pred_cosineknn_true_mean), names_to = "n_mean") %>%
+  ggplot(aes(interaction(features_transformer, formulation), value, fill = n_mean)) + geom_col(position = "dodge") +
+  coord_flip()
+```
+```{r}
+relationship_transformer_vs_cosine_counts_plot <-
+  function(ground_truth) {
+    prediction_df_compare_classifier_counts <-
+      prediction_df_compare_classifier %>%
+      filter(y_actual == ground_truth * 1.) %>%
+      inner_join(
+        prediction_df_compare_classifier_per_cpd_counts %>%
+          select(
+            formulation,
+            features_transformer,
+            classifier_cosineknn,
+            features_cosineknn,
+            n_y_pred_cosineknn_true_sum
+          ),
+        by = c(
+          "formulation",
+          "features_transformer",
+          "classifier_cosineknn",
+          "features_cosineknn"
+        )
+      ) %>%
+      mutate(
+        gene_compound_global_pct_transformer_is_top =
+          gene_compound_global_rank_transformer < n_y_pred_cosineknn_true_sum,
+        y_pred_cosineknn = y_prob_cosineknn >= 0.5
+      ) %>%
+      count(
+        formulation,
+        features_transformer,
+        features_cosineknn,
+        y_pred_cosineknn,
+        gene_compound_global_pct_transformer_is_top,
+        .drop = FALSE
+      )
+
+    p <-
+      prediction_df_compare_classifier_counts %>%
+      ggplot(aes(
+        y_pred_cosineknn,
+        gene_compound_global_pct_transformer_is_top,
+        label = n
+      )) +
+      geom_label() +
+      facet_grid(formulation + features_cosineknn ~ features_transformer) +
+      xlab("cosine 1-NN prediction") +
+      ylab("transformer prediction") +
+      theme_bw() +
+      coord_equal() +
+      ggtitle(
+        "Relationship between cosine 1-nn and transformer",
+        subtitle =
+          glue(
+            "Transformer works mostly when 1-nn is correct\nEach point is a {ground_truth} gene-compound connection (test)"
+          )
+      ) +
+      labs(
+        caption = glue(
+          "Each point is a {ground_truth} gene-compound connection (test) so TRUE = {ground_truth} positive and FALSE = {!ground_truth} negative\nTransformer prediction is obtained by thresholding to match the same number of positive predictions as cosine1nn",
+          k = params$percentile_threshold * 100
+        )
+      ) +
+      theme(plot.caption = element_text(face = "italic"),
+            legend.position = "bottom")
+
+    p
+  }
+```
+
+
+```{r fig.asp=1, fig.width=5}
+p <- relationship_transformer_vs_cosine_counts_plot(TRUE)
+
+print(p)
+
+ggsave("output/relationship_transformer_vs_cosine_b.png", p, width = 10, height = 8)
+```
+
+
+```{r}
+relationship_transformer_vs_transformerx_counts_plot <-
+  function(ground_truth) {
+    pp <-
+      prediction_df_compare_classifierx %>%
+      group_by(
+        classifier_transformer,
+        classifier_transformerx,
+        features_transformer,
+        features_transformerx,
+        formulation
+      ) %>%
+      summarise(pp = sum(y_actual), .groups = "keep")
+    
+    
+    prediction_df_compare_classifierx_counts <-
+      prediction_df_compare_classifierx %>%
+      filter(y_actual == ground_truth * 1.) %>%
+      inner_join(
+        pp,
+        by = c(
+          "classifier_transformer",
+          "classifier_transformerx",
+          "features_transformer",
+          "features_transformerx",
+          "formulation"
+        )
+      ) %>%
+      mutate(
+        gene_compound_global_pct_transformer_is_top =
+          gene_compound_global_rank_transformer < pp,
+        gene_compound_global_pct_transformerx_is_top =
+          gene_compound_global_rank_transformerx < pp,
+      ) %>%
+      count(
+        formulation,
+        features_transformer,
+        features_transformerx,
+        gene_compound_global_pct_transformer_is_top,
+        gene_compound_global_pct_transformerx_is_top,
+        .drop = FALSE
+      )
+    
+    p <-
+      prediction_df_compare_classifierx_counts %>%
+      filter(features_transformerx == features_transformer) %>%
+      ggplot(
+        aes(
+          gene_compound_global_pct_transformerx_is_top,
+          gene_compound_global_pct_transformer_is_top,
+          label = n
+        )
+      ) +
+      geom_label() +
+      facet_wrap(~features_transformerx) +
+      xlab("transformerx prediction") +
+      ylab("transformer prediction") +
+      theme_bw() +
+      coord_equal() +
+      ggtitle(
+        "Relationship between transformer and transformerx",
+        subtitle =
+          glue(
+            "Each point is a {ground_truth} gene-compound connection (test)"
+          )
+      ) +
+      labs(
+        caption = glue(
+          "Each point is a {ground_truth} gene-compound connection (test) so TRUE = {ground_truth} positive and FALSE = {!ground_truth} negative\nTransformer predictions are obtained by thresholding to match the number of positive examples",
+          k = params$percentile_threshold * 100
+        )
+      ) +
+      theme(plot.caption = element_text(face = "italic"),
+            legend.position = "bottom")
+    
+    p
+  }
+```
+
+
+```{r fig.asp=1, fig.width=5}
+p <- relationship_transformer_vs_transformerx_counts_plot(TRUE)
+
+print(p)
+
+ggsave("output/relationship_transformer_vs_transformerx_b.png", p, width = 10, height = 8)
+```
+
+
+```{r fig.asp=1, fig.width=5}
+p <- relationship_transformer_vs_cosine_counts_plot(FALSE)
+
+print(p)
+
+ggsave("output/relationship_transformer_vs_cosine_c.png", p, width = 10, height = 8)
+```
+
+## Inspect `pair`: Do both gene and compound connections help with predictions?
+
+```{r}
+prediction_df_transformer <-
+  prediction_df %>%
+  inner_join(
+    tribble(~classifier, ~formulation,
+            "transformer", "compound",
+            "transformer", "gene",
+            "transformer", "pair")
+    ) %>%
+  filter(y_actual == 1) %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+  inner_join(
+    training_bias %>%
+      select(
+        pert_iname_compound,
+        gene,
+        formulation,
+        features,
+        which_connected_train,
+        n_connected_genes_train,
+        n_connected_compounds_train,
+        connected_genes_train,
+        connected_compounds_train
+      ) %>% distinct(),
+    by = c(
+      "pert_iname_compound",
+      "gene",
+      "formulation",
+      "features"
+    )
+  ) %>%
+  rename(n_genes = n_connected_genes_train,
+         n_cpds = n_connected_compounds_train)
+# %>%
+#   mutate(n_genes = as.factor(n_genes),
+#          n_cpds = as.factor(n_cpds))
+```
+
+
+```{r}
+condition_positive <-
+  prediction_df %>%
+  group_by(classifier, formulation, features) %>%
+  summarize(p = sum(y_actual),
+            n = n(),
+            p_frac = p / n, .groups = "keep") %>%
+  ungroup() %>%
+  group_by(formulation, features) %>%
+  summarise(p_frac_min = min(p_frac),
+            p_frac_max = max(p_frac))
+
+stopifnot(nrow(condition_positive %>% filter(p_frac_min != p_frac_max)) == 0)
+
+condition_positive <-
+  condition_positive %>%
+  rename(p_frac = p_frac_min) %>%
+  select(-p_frac_max)
+
+condition_positive
+```
+
+```{r}
+features_i <- "crispr_orf_max"
+
+condition_positive_i <-
+  condition_positive %>%
+  filter(features == features_i &
+           formulation %in% c("compound", "pair", "gene"))
+
+prediction_df_transformer_i <-
+  prediction_df_transformer %>%
+  inner_join(
+    tribble(
+      ~ classifier,
+      ~ formulation,
+      "transformer",
+      "compound",
+      "transformer",
+      "gene",
+      "transformer",
+      "pair"
+    ),
+    by = c("classifier", "formulation")
+  ) %>%
+  filter(features == features_i)
+```
+
+
+```{r}
+p <-
+  prediction_df_transformer_i %>%
+  mutate(n_cpds = as.factor(n_cpds)) %>%
+  ggplot(aes(
+    n_cpds,
+    gene_compound_global_pct,
+    text = paste0(
+      "gene: ",
+      gene,
+      "\ncompound: ",
+      pert_iname_compound,
+      "\nc_genes: ",
+      connected_genes_train,
+      "\nc_compounds: ",
+      connected_compounds_train
+    )
+  )) +
+  geom_point(alpha = 0.5, aes(color = which_connected_train)) +
+  geom_hline(
+    data = condition_positive_i,
+    aes(yintercept = p_frac),
+    color = "red"
+  ) +
+  scale_y_log10() +
+  scale_color_manual(values = palette_manual_dark_2) +
+  ylab("Connection percentile\n(test)") +
+  facet_grid(formulation ~ n_genes,
+             labeller = labeller(formulation = label_value, n_genes = label_both)) +
+  ggtitle("Inspecting leave-out-pair", subtitle = "Seeing other compounds targeting the same gene improves prediction") +
+  labs(caption = "Each point is a true gene-compound connection (test)\nn_genes = # genes connected to the compound (training); n_cpds = # compounds connected to the gene (training)") +
+  theme(plot.caption = element_text(face = "italic"),
+        legend.position = "bottom")
+
+print(p)
+```
+
+
+```{r}
+ggsave("output/relationship_gene_compound_a.png", p, width = 8, height = 6)
+```
+
+
+```{r}
+l <- plotly::ggplotly(p)
+
+htmlwidgets::saveWidget(l, "output/relationship_gene_compound_a.html")
+```
+
+
+```{r}
+
+p <-
+  prediction_df_transformer_i %>%
+  mutate(n_genes = as.factor(n_genes)) %>%
+  ggplot(
+    aes(
+      n_genes,
+      gene_compound_global_pct,
+      text = paste0("gene: ",
+                    gene,
+                    "\ncompound: ",
+                    pert_iname_compound,
+                    "\nc_genes: ",
+                    connected_genes_train,
+                    "\nc_compounds: ",
+                    connected_compounds_train)
+    )
+  ) +
+  geom_point(alpha = 0.5, aes(color = which_connected_train)) +
+  geom_hline(
+    data = condition_positive_i,
+    aes(yintercept = p_frac),
+    color = "red"
+  ) +
+  scale_y_log10() +
+  scale_color_manual(values = palette_manual_dark_2) +
+  ylab("Connection percentile\n(test)") +
+  facet_grid(formulation~n_cpds,
+             labeller = labeller(formulation = label_value, n_cpds = label_both)) +
+  ggtitle("Inspecting leave-out-pair", subtitle = "Seeing other genes targeted by the same compound marginally improves prediction") +
+  labs(caption = "Each point is a true gene-compound connection (test)\nn_genes = # genes connected to the compound (training); n_cpds = # compounds connected to the gene (training)") +
+  theme(plot.caption = element_text(face = "italic"),
+        legend.position = "bottom")
+
+print(p)
+```
+```{r}
+ggsave("output/relationship_gene_compound_b.png", p, width = 8, height = 6)
+```
+
+
+```{r}
+l <- plotly::ggplotly(p)
+
+htmlwidgets::saveWidget(l, "output/relationship_gene_compound_b.html")
+```
+
+
+```{r fig.width=10, fig.height=10}
+
+p <-
+  prediction_df_transformer_i %>%
+  filter(features == features_i) %>%
+  inner_join(condition_positive_i, by = c("formulation", "features")) %>%
+  mutate(tp = gene_compound_global_pct < p_frac) %>%
+  group_by(formulation, features, n_genes, n_cpds) %>%
+  summarise(
+    gene_compound_global_pct = mean(gene_compound_global_pct),
+    tp = mean(tp),
+    n = n(),
+    .groups = "keep"
+  ) %>%
+  ggplot(aes(n_cpds, n_genes)) +
+  geom_point(aes(size = tp), alpha = 0.5) +
+#  geom_point(aes(size = n), color = "red", alpha = 0.2) +
+  geom_text(aes(n_cpds, n_genes - 0.3, label = glue("n:{n}")), size = 3, color = "red") +
+  geom_text(aes(n_cpds, n_genes + 0.3, label = glue("tp:{round(tp, 2)}")), size = 3, color = "black") +
+  coord_equal() +
+  scale_y_continuous(breaks=seq(0, 7, 1), limits = c(-0.5, 7.5)) +
+  scale_x_continuous(breaks=seq(0, 7, 1), limits = c(-0.5, 7.5)) +
+  theme_bw() +
+  ggtitle("Inspecting leave-out-pair", subtitle = "Seeing other compounds targeting the same gene improves prediction\nSeeing other genes targeted by the same compound marginally improves prediction") +
+  labs(caption = "tp = average number of true positives. n = number of connections\nn_genes = # genes connected to the compound (training); n_cpds = # compounds connected to the gene (training)") +
+  theme(plot.caption = element_text(face = "italic"),
+        legend.position = "bottom") +
+  facet_wrap(~formulation, ncol = 3)
+
+print(p)
+```
+```{r}
+ggsave("output/relationship_gene_compound_c.png", p, width = 12, height = 6)
+```
+
+
+## Compare `compound` and `pair` formulations
+
+```{r}
+prediction_df_compare_formulations <-
+  prediction_df %>%
+  inner_join(
+    tribble(~classifier, ~formulation,
+            "transformer", "compound",
+            "transformer", "pair",
+            ),
+    by = c("classifier", "formulation")
+  )
+
+prediction_df_pair <-
+  prediction_df_compare_formulations %>%
+  filter(formulation == "pair")
+
+prediction_df_compound <-
+  prediction_df_compare_formulations %>%
+  filter(formulation == "compound")
+
+prediction_df_compare_formulations <-
+  inner_join(
+    prediction_df_pair,
+    prediction_df_compound,
+    by = c("classifier", "features", "pert_iname_compound", "gene", "y_actual"),
+    suffix = c("_pair", "_compound")
+  ) %>%
+  select(classifier, features, pert_iname_compound, gene, y_actual, everything())
+```
+
+
+```{r rows.print=20}
+prediction_df_pair %>%
+  count(classifier,  features, formulation, y_actual)
+```
+
+
+```{r rows.print=20}
+prediction_df_compound %>%
+  count(classifier, features, formulation, y_actual)
+```
+
+
+```{r rows.print=20}
+prediction_df_compare_formulations %>%
+   count(classifier, features, formulation_compound, formulation_pair, y_actual)
+```
+
+
+```{r}
+prediction_df_compare_formulations <-
+  prediction_df_compare_formulations %>%
+  group_by(classifier, features, formulation_compound, formulation_pair) %>%
+  mutate(gene_compound_global_pct_pair_i = 1 - percent_rank(y_prob_pair)) %>%
+  mutate(gene_compound_global_pct_compound_i = 1 - percent_rank(y_prob_compound)) %>%
+  ungroup()
+```
+
+
+```{r}
+prediction_df_compare_formulations %>%
+  mutate(diff_pct_pair = gene_compound_global_pct_pair_i - gene_compound_global_pct_pair)  %>%
+  mutate(diff_pct_compound = gene_compound_global_pct_compound_i - gene_compound_global_pct_compound)  %>%
+  select(diff_pct_pair, diff_pct_compound) %>%
+  pivot_longer(everything(), names_to = "formulation", values_to = "pct_diff") %>%
+  ggplot(aes(pct_diff)) +
+  geom_histogram(bins = 200) +
+  xlim(-.1, .1) +
+  facet_wrap(~ formulation)
+```
+
+
+
+```{r}
+p <-
+  prediction_df_compare_formulations %>%
+  filter(y_actual == 0) %>%
+  ggplot(aes(gene_compound_global_pct_compound_i, gene_compound_global_pct_pair_i)) +
+  geom_hex() +
+  geom_abline(slope = 1) +
+  facet_wrap(~features) +
+  coord_equal() +
+  ggtitle("Relationship between leave-out-pair and leave-out-compound",
+          subtitle = "Each point is a prediction on the (false) gene-compound pair")
+
+ggsave(
+  glue("output/relationship_pair_vs_compound_false.png"),
+  p,
+  width = 8,
+  height = 8
+)
+
+print(p)
+```
+
+
+```{r}
+prediction_df_compare_formulations_pos <-
+  prediction_df_compare_formulations %>%
+  filter(y_actual == 1) %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+  inner_join(
+    training_bias %>%
+      select(
+        pert_iname_compound,
+        gene,
+        classifier,
+        formulation,
+        features,
+        connected_genes_train,
+        connected_compounds_train,
+        which_connected_train_pair = which_connected_train
+      ) %>% distinct(),
+    by = c(
+      "pert_iname_compound",
+      "gene",
+      "classifier",
+      "formulation_pair" = "formulation",
+      "features"
+    )
+  ) %>%
+  inner_join(
+    training_bias %>%
+      select(
+        pert_iname_compound,
+        gene,
+        classifier,
+        formulation,
+        features,
+        connected_genes_train,
+        connected_compounds_train,
+        which_connected_train_compound = which_connected_train
+      ) %>% distinct(),
+    by = c(
+      "pert_iname_compound",
+      "gene",
+      "classifier",
+      "formulation_compound" = "formulation",
+      "features"
+    ),
+    suffix = c("_pair", "_compound")
+  ) %>%
+  mutate(
+    which_connected_train =
+      interaction(which_connected_train_pair,
+                  which_connected_train_compound)
+  )
+```
+
+
+```{r}
+p <-
+  prediction_df_compare_formulations_pos %>%
+  ggplot(
+    aes(
+      gene_compound_global_pct_compound_i,
+      gene_compound_global_pct_pair_i,
+      color = which_connected_train,
+      text = paste0("gene: ",
+                    gene,
+                    "\ncompound: ",
+                    pert_iname_compound,
+                    "\nc_genes_compound: ",
+                    connected_genes_train_compound,
+                    "\nc_compounds_compound: ",
+                    connected_compounds_train_compound,
+                    "\nc_genes_pair: ",
+                    connected_genes_train_pair,
+                    "\nc_compounds_pair: ",
+                    connected_compounds_train_pair                    )
+    )
+  ) +
+  geom_point() +
+  geom_abline(slope = 1) +
+  xlim(c(0, 1)) +
+  ylim(c(0, 1)) +
+  facet_wrap(~ features) +
+  coord_equal() +
+  labs(color = "pair:compound\nconnection type") +
+  ggtitle("Relationship between leave-out-pair and leave-out-compound",
+          subtitle = "Each point is a prediction on the (true) gene-compound pair")
+
+ggsave(
+  glue("output/relationship_pair_vs_compound_true.png"),
+  p,
+  width = 8,
+  height = 8
+)
+
+print(p)
+```
+
+
+```{r}
+l <- plotly::ggplotly(p)
+
+htmlwidgets::saveWidget(l, "output/relationship_pair_vs_compound_true.html")
+```
+
+
+```{r}
+pct_thresh <- 0.10
+
+prediction_df_compare_formulations_common <-
+  prediction_df_compare_formulations_pos %>%
+  filter(
+    gene_compound_global_pct_compound_i < pct_thresh |
+      gene_compound_global_pct_pair_i < pct_thresh
+  ) %>%
+  select(
+    classifier,
+    features,
+    gene,
+    pert_iname_compound,
+    gene_compound_global_pct_pair_i,
+    gene_compound_global_pct_compound_i,
+    connected_genes_train_compound,
+    connected_genes_train_pair,
+    connected_compounds_train_pair,
+    connected_compounds_train_compound,
+    which_connected_train
+  ) %>%
+  rowwise() %>%
+  mutate(connected_compounds_train_common =
+           c(intersect(
+             str_split(connected_compounds_train_pair, pattern = "\\|")[[1]],
+             str_split(connected_compounds_train_compound, pattern = "\\|")[[1]]
+           )) %>%
+           paste0(collapse = ",")) %>%
+  filter(str_length(connected_compounds_train_common) > 0)
+```
+
+
+```{r}
+p <-
+  prediction_df_compare_formulations_common %>%
+  ggplot(
+    aes(
+      gene_compound_global_pct_compound_i,
+      gene_compound_global_pct_pair_i,
+      color = which_connected_train,
+      text = paste0("gene: ",
+                    gene,
+                    "\ncompound: ",
+                    pert_iname_compound,
+                    "\nc_genes_compound: ",
+                    connected_genes_train_compound,
+                    "\nc_compounds_compound: ",
+                    connected_compounds_train_compound,
+                    "\nc_genes_pair: ",
+                    connected_genes_train_pair,
+                    "\nc_compounds_pair: ",
+                    connected_compounds_train_pair                    )
+    )
+  ) +
+  geom_point() +
+  geom_abline(slope = 1) +
+  xlim(c(0, 1)) +
+  ylim(c(0, 1)) +
+  facet_wrap(~ features) +
+  coord_equal() +
+  labs(color = "pair:compound\nconnection type") +
+  ggtitle("Relationship between leave-out-pair and leave-out-compound",
+          subtitle = "Each point is a prediction on the (true) gene-compound pair")
+
+ggsave(
+  glue("output/relationship_pair_vs_compound_true_common.png"),
+  p,
+  width = 8,
+  height = 8
+)
+
+print(p)
+```
+
+
+```{r}
+l <- plotly::ggplotly(p)
+
+htmlwidgets::saveWidget(l, "output/relationship_pair_vs_compound_true_common.html")
+```
+
+
+```{r}
+knitr::opts_chunk$set(options(digits=3))
+
+prediction_df_compare_formulations_common %>%
+  filter(features == "crispr_orf_max") %>%
+  select(
+    gene,
+    pert_iname_compound,
+    pct_pair = gene_compound_global_pct_pair_i,
+    pct_compound = gene_compound_global_pct_compound_i,
+    connected_compounds_train_common,
+    which_connected_train,
+    everything()
+  ) %>%
+  arrange(
+    pct_compound,
+    pct_pair)
+```
+

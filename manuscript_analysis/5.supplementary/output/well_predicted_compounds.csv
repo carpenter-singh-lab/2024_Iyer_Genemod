@@ -1,0 +1,90 @@
+pert_iname_compound,gene_compound_global_rank,moa,gene,disease_area,target,indication,pert_iname_normalized,clinical_phase
+ixabepilone,3,microtubule stabilizing agent,TUBB,oncology,TUBB,breast cancer,ixabepilone,Launched
+CYT-997,5,tubulin polymerization inhibitor,TUBB,,TUBB,,cyt997,Phase 2
+PHA-793887,6,CDK inhibitor,CDK2,,CDK1|CDK2|CDK4|CDK5|CDK7|CDK9,,pha793887,Phase 1
+ixabepilone,7,microtubule stabilizing agent,TUBB4B,oncology,TUBB,breast cancer,ixabepilone,Launched
+A-987306,9,histamine receptor antagonist,CHRM3,,ADORA1|AVPR1A|CCR1|CHRM1|CHRM2|CHRM3|CHRM4|DRD3|HTR1A|HTR1B|HTR2A|HTR2B|HTR3A|TACR2,,a987306,Preclinical
+A-987306,11,histamine receptor antagonist,HTR3A,,ADORA1|AVPR1A|CCR1|CHRM1|CHRM2|CHRM3|CHRM4|DRD3|HTR1A|HTR1B|HTR2A|HTR2B|HTR3A|TACR2,,a987306,Preclinical
+PHA-793887,15,CDK inhibitor,CDK7,,CDK1|CDK2|CDK4|CDK5|CDK7|CDK9,,pha793887,Phase 1
+NVP-HSP990,16,HSP inhibitor,HSP90AA1,,HSP90AA1|HSP90AB1,,nvphsp990,Phase 1
+PHA-793887,19,CDK inhibitor,CDK9,,CDK1|CDK2|CDK4|CDK5|CDK7|CDK9,,pha793887,Phase 1
+ixabepilone,24,microtubule stabilizing agent,TUBB3,oncology,TUBB,breast cancer,ixabepilone,Launched
+A-987306,31,histamine receptor antagonist,CHRM2,,ADORA1|AVPR1A|CCR1|CHRM1|CHRM2|CHRM3|CHRM4|DRD3|HTR1A|HTR1B|HTR2A|HTR2B|HTR3A|TACR2,,a987306,Preclinical
+PHA-793887,53,CDK inhibitor,CDK4,,CDK1|CDK2|CDK4|CDK5|CDK7|CDK9,,pha793887,Phase 1
+NVP-ADW742,65,insulin growth factor receptor inhibitor,IGF1R,,IGF1R,,nvpadw742,Preclinical
+danusertib,72,Aurora kinase inhibitor|growth factor receptor inhibitor,AURKB,,AURKA|AURKB|AURKC|FGFR1|NTRK1|RET|SLK,,danusertib,Phase 2
+NVP-AEW541,74,IGF-1 inhibitor,IGF1R,,IGF1R|INSR,,nvpaew541,Preclinical
+NVP-HSP990,96,HSP inhibitor,HSP90AB1,,HSP90AA1|HSP90AB1,,nvphsp990,Phase 1
+SRC-kinase-inhibitor-I,169,SRC inhibitor,LCK,,CSK|LCK|RIPK2,,srckinaseinhibitori,Preclinical
+gabapentin-enacarbil,178,adrenergic receptor agonist,CACNA2D3,neurology/psychiatry,CACNA1G,restless leg syndrome|postherpetic neuralgia,gabapentinenacarbil,Launched
+PF-05190457,202,growth hormone secretagogue receptor inverse agonist,GHSR,,GHSR,,pf05190457,Phase 2
+gabapentin-enacarbil,281,adrenergic receptor agonist,CACNB4,neurology/psychiatry,CACNA1G,restless leg syndrome|postherpetic neuralgia,gabapentinenacarbil,Launched
+1-octanol,350,,GJB4,,GJA1|GJA10|GJA3|GJA4|GJA5|GJA8|GJA9|GJB1|GJB2|GJB3|GJB4|GJB5|GJB6|GJB7|GJC1|GJC2|GJC3|GJD2|GJD3|GJD4|GJE1,,1octanol,Phase 2
+acetylcysteine,358,mucolytic agent,SLC7A11,gastroenterology,ACY1|CHUK|GRIN1|GRIN2A|GRIN2B|GRIN2D|GRIN3A|GSS|IKBKB|RELA|SLC7A11,acetaminophen overdose|hepatic injury,acetylcysteine,Launched
+acetylcysteine,387,mucolytic agent,GRIN2A,gastroenterology,ACY1|CHUK|GRIN1|GRIN2A|GRIN2B|GRIN2D|GRIN3A|GSS|IKBKB|RELA|SLC7A11,acetaminophen overdose|hepatic injury,acetylcysteine,Launched
+racecadotril,407,enkephalinase inhibitor,MME,gastroenterology,MME,diarrhea,racecadotril,Launched
+saclofen,418,GABA receptor antagonist,KCTD16,,GABBR1|GABBR2|KCTD12|KCTD16|KCTD8,,saclofen,Preclinical
+diacerein,457,interleukin inhibitor,IL1B,rheumatology,IL1B,osteoarthritis,diacerein,Launched
+quinine,509,hemozoin biocrystallization inhibitor,KCNN4,infectious disease,GP9|KCNB2|KCNN4|SLC29A4,malaria,quinine,Launched
+flupirtine,519,glutamate receptor antagonist,KCNQ2,neurology/psychiatry,ADRA2A|KCNQ1|KCNQ2,pain relief,flupirtine,Launched
+triamterene,637,sodium channel blocker,SCNN1G,endocrinology|cardiology,SCNN1A|SCNN1B|SCNN1D|SCNN1G,hypokalemia|hypertension|edema,triamterene,Launched
+diltiazem,641,calcium channel blocker,CACNG1,cardiology,CACNA1C|CACNA1S|CACNA2D1|CACNG1|HTR3A|KCNA5,hypertension|angina pectoris,diltiazem,Launched
+flindokalner,924,potassium channel agonist,KCNN4,,KCNMA1|KCNN4|KCNQ2|KCNQ4|KCNQ5,,flindokalner,Phase 3
+brinzolamide,1059,carbonic anhydrase inhibitor,CA5A,ophthalmology,CA1|CA12|CA14|CA2|CA4|CA5A|CA7,intraocular pressure|glaucoma|ocular hypertension,brinzolamide,Launched
+A-987306,1124,histamine receptor antagonist,CCR1,,ADORA1|AVPR1A|CCR1|CHRM1|CHRM2|CHRM3|CHRM4|DRD3|HTR1A|HTR1B|HTR2A|HTR2B|HTR3A|TACR2,,a987306,Preclinical
+flindokalner,1166,potassium channel agonist,KCNQ2,,KCNMA1|KCNN4|KCNQ2|KCNQ4|KCNQ5,,flindokalner,Phase 3
+efaroxan,1208,adrenergic receptor antagonist,ADORA2A,,ADORA2A,,efaroxan,Phase 2
+L-Cystine,1246,,SLC7A11,,CTNS|SLC3A1|SLC7A11|SLC7A9,,lcystine,Launched
+gabapentin-enacarbil,1487,adrenergic receptor agonist,CACNG1,neurology/psychiatry,CACNA1G,restless leg syndrome|postherpetic neuralgia,gabapentinenacarbil,Launched
+amlodipine,1669,calcium channel blocker,CACNA2D3,cardiology,CACNA1C|CACNA1D|CACNA1F|CACNA1S|CACNA2D1,hypertension|chronic stable angina|vasospastic angina|coronary artery disease (CAD),amlodipine,Launched
+amiloride,1701,sodium channel blocker,SCNN1G,cardiology,AOC1|ASIC1|ASIC2|ASIC3|PKD2|PKD2L1|PLAU|SCNN1A|SCNN1B|SCNN1D|SCNN1G|SLC9A1|TRPC7|TRPV2,hypertension|congestive heart failure,amiloride,Launched
+filgotinib,1738,JAK inhibitor,JAK1,,JAK1|JAK2|JAK3|TYK2,,filgotinib,Phase 3
+flindokalner,1910,potassium channel agonist,KCNMA1,,KCNMA1|KCNN4|KCNQ2|KCNQ4|KCNQ5,,flindokalner,Phase 3
+acalabrutinib,2061,Bruton's tyrosine kinase (BTK) inhibitor,BTK,hematologic malignancy,BTK,mantle cell lymphoma (MCL),acalabrutinib,Launched
+NBQX,2207,glutamate receptor antagonist,GRIN2A,,GRIA1|GRIA2|GRIA3|GRIA4|GRIK1|GRIN1|GRIN2A|GRIN2B,,nbqx,Preclinical
+BAY-87-2243,2752,hypoxia inducible factor inhibitor,HIF1A,,HIF1A,,bay872243,Phase 1
+taladegib,2755,smoothened receptor antagonist,DHH,,DHH|IHH|SMO,,taladegib,Phase 2
+cilostazol,3078,phosphodiesterase inhibitor,PDE3A,cardiology,PDE3A|PDE3B,claudication,cilostazol,Launched
+CCG-50014,3146,G protein signaling inhibitor,RGS4,,RGS4|RGS8,,ccg50014,Preclinical
+prasugrel,3190,purinergic receptor antagonist,P2RY12,cardiology,P2RY12,myocardial infarction|acute coronary syndrome (ACS),prasugrel,Launched
+sorbinil,3389,aldose reductase inhibitor,AKR1B1,,AKR1B1,,sorbinil,Phase 3
+EI1,3506,histone lysine methyltransferase inhibitor,EZH2,,EZH2,,ei1,Preclinical
+SB-202190,3530,p38 MAPK inhibitor,MAPK8,,AKT1|ALOX5|CHEK1|GSK3B|LCK|MAPK1|MAPK11|MAPK12|MAPK14|MAPK8|PRKCA|ROCK1|RPS6KB1|SGK1,,sb202190,Preclinical
+edoxaban,3595,coagulation factor inhibitor,F10,neurology/psychiatry|hematology|cardiology,F10,stroke|pulmonary embolism (PE)|systemic embolism|deep vein thrombosis (DVT)|atrial fibrillation (AF),edoxaban,Launched
+SRC-kinase-inhibitor-I,3809,SRC inhibitor,CSK,,CSK|LCK|RIPK2,,srckinaseinhibitori,Preclinical
+BAN-ORL-24,3903,nociceptin/orphanin FQ receptor antagonist,OPRL1,,OPRL1,,banorl24,Preclinical
+NSC-95397,3996,CDC inhibitor,CDC25A,,CDC25A|CDC25B,,nsc95397,Preclinical
+diltiazem,4156,calcium channel blocker,HTR3A,cardiology,CACNA1C|CACNA1S|CACNA2D1|CACNG1|HTR3A|KCNA5,hypertension|angina pectoris,diltiazem,Launched
+amlexanox,4275,histamine receptor modulator,PDE4D,dental|pulmonary|ophthalmology|allergy,FGF1|IL3|PDE4A|PDE4B|PDE4C|PDE4D|S100A12|S100A13,aphthous ulcers|asthma|conjunctivitis|allergic rhinitis,amlexanox,Launched
+OMDM-2,4302,FAAH inhibitor,GPR119,,GPR119,,omdm2,Preclinical
+SB-202190,4392,p38 MAPK inhibitor,AKT1,,AKT1|ALOX5|CHEK1|GSK3B|LCK|MAPK1|MAPK11|MAPK12|MAPK14|MAPK8|PRKCA|ROCK1|RPS6KB1|SGK1,,sb202190,Preclinical
+N-alpha-Methylhistamine-dihydrochloride,4855,histamine receptor agonist,HRH4,,HRH4,,nalphamethylhistaminedihydrochloride,Phase 3
+SB-202190,4930,p38 MAPK inhibitor,LCK,,AKT1|ALOX5|CHEK1|GSK3B|LCK|MAPK1|MAPK11|MAPK12|MAPK14|MAPK8|PRKCA|ROCK1|RPS6KB1|SGK1,,sb202190,Preclinical
+BVT-948,4996,tyrosine phosphatase inhibitor,PTPN2,,PTPN1|PTPN11|PTPN2,,bvt948,Preclinical
+GW-311616,5251,elastase inhibitor|leukocyte elastase inhibitor,ELANE,,ELANE,,gw311616,Phase 1
+RKI-1447,5449,rho associated kinase inhibitor,PAK1,,CDC42BPA|DMPK|LIMK1|MYLK|PAK1|PKN1|ROCK1|ROCK2,,rki1447,Preclinical
+ML-228,5578,hypoxia inducible factor activator,HIF1A,,HIF1A,,ml228,Preclinical
+amiloride,5793,sodium channel blocker,ASIC1,cardiology,AOC1|ASIC1|ASIC2|ASIC3|PKD2|PKD2L1|PLAU|SCNN1A|SCNN1B|SCNN1D|SCNN1G|SLC9A1|TRPC7|TRPV2,hypertension|congestive heart failure,amiloride,Launched
+PF-04217903,5920,c-Met inhibitor,MET,,MET,,pf04217903,Phase 1
+PETCM,5968,caspase activator,CASP3,,CASP3,,petcm,Preclinical
+DG-172,5974,PPAR receptor inverse agonist,PPARD,,PPARD,,dg172,Preclinical
+amlexanox,6348,histamine receptor modulator,FGF1,dental|pulmonary|ophthalmology|allergy,FGF1|IL3|PDE4A|PDE4B|PDE4C|PDE4D|S100A12|S100A13,aphthous ulcers|asthma|conjunctivitis|allergic rhinitis,amlexanox,Launched
+enilconazole,6450,sterol demethylase inhibitor,CYP3A4,infectious disease,CYP19A1|CYP1A2|CYP2B6|CYP2C9|CYP2J2|CYP3A4|CYP3A5|NR1I2|PPARA|PTGER2,skin infections,enilconazole,Launched
+delanzomib,6650,proteasome inhibitor,CTSG,,CMA1|CTSG|CYP3A4|ELANE,,delanzomib,Phase 1/Phase 2
+A-987306,6763,histamine receptor antagonist,AVPR1A,,ADORA1|AVPR1A|CCR1|CHRM1|CHRM2|CHRM3|CHRM4|DRD3|HTR1A|HTR1B|HTR2A|HTR2B|HTR3A|TACR2,,a987306,Preclinical
+brinzolamide,6848,carbonic anhydrase inhibitor,CA14,ophthalmology,CA1|CA12|CA14|CA2|CA4|CA5A|CA7,intraocular pressure|glaucoma|ocular hypertension,brinzolamide,Launched
+SB-202190,6984,p38 MAPK inhibitor,MAPK14,,AKT1|ALOX5|CHEK1|GSK3B|LCK|MAPK1|MAPK11|MAPK12|MAPK14|MAPK8|PRKCA|ROCK1|RPS6KB1|SGK1,,sb202190,Preclinical
+2-Oleoylglycerol,7178,glucose dependent insulinotropic receptor ligand,GPR119,,GPR119,,2oleoylglycerol,Phase 1
+menadione,7313,mitochondrial DNA polymerase inhibitor|phosphatase inhibitor,F10,gastroenterology|neurology/psychiatry|dermatology|rheumatology,AOX1|BGLAP|F10|F2|F7|F9|GGCX|NQO1|NQO2|PROC|PROS1|PROZ|VKORC1|VKORC1L1,ulcerative colitis|diarrhea|headache|varicose veins|rheumatoid arthritis,menadione,Launched
+enilconazole,7513,sterol demethylase inhibitor,CYP1A2,infectious disease,CYP19A1|CYP1A2|CYP2B6|CYP2C9|CYP2J2|CYP3A4|CYP3A5|NR1I2|PPARA|PTGER2,skin infections,enilconazole,Launched
+thiostrepton,8042,FOXM1 inhibitor|protein synthesis inhibitor,FOXM1,obstetrics/gynecology,FOXM1,mastitis,thiostrepton,Launched
+danusertib,8135,Aurora kinase inhibitor|growth factor receptor inhibitor,NTRK1,,AURKA|AURKB|AURKC|FGFR1|NTRK1|RET|SLK,,danusertib,Phase 2
+efaproxiral,8569,hemoglobin oxygen release stimulant,HBB,,HBA1|HBB,,efaproxiral,Phase 3
+danusertib,8817,Aurora kinase inhibitor|growth factor receptor inhibitor,RET,,AURKA|AURKB|AURKC|FGFR1|NTRK1|RET|SLK,,danusertib,Phase 2
+delanzomib,8889,proteasome inhibitor,ELANE,,CMA1|CTSG|CYP3A4|ELANE,,delanzomib,Phase 1/Phase 2
+sotrastaurin,9067,PKC inhibitor,PRKCB,,PRKCA|PRKCB|PRKCD|PRKCE|PRKCH|PRKCQ,,sotrastaurin,Phase 2
+FPS-ZM1,9178,RAGE receptor antagonist,AGER,,AGER,,fpszm1,Preclinical
+azeliragon,9621,RAGE receptor antagonist,AGER,,AGER,,azeliragon,Phase 3
+sotrastaurin,9629,PKC inhibitor,PRKCE,,PRKCA|PRKCB|PRKCD|PRKCE|PRKCH|PRKCQ,,sotrastaurin,Phase 2
+delanzomib,9732,proteasome inhibitor,CYP3A4,,CMA1|CTSG|CYP3A4|ELANE,,delanzomib,Phase 1/Phase 2
+"2,5-furandimethanol",9875,hemoglobin modulator,HBB,,HBB,,"2,5furandimethanol",Phase 2

@@ -1,0 +1,657 @@
+---
+title: "Score predictions"
+params:
+  run_bootstrap: TRUE
+  n_bootstrap: 100
+  top_k_percent: 5
+  n_cores: 14
+  batch: 2020_11_04_CPJUMP1
+  data_path: ~/work/projects/2019_07_11_JUMP-CP/workspace/software/pilot-cpjump1-data
+---
+
+# Setup
+
+```{r message=FALSE}
+library(glue)
+library(magrittr)
+library(tidyverse)
+source("utils.R")
+```
+
+Set up parallel environment
+
+```{r}
+library(doRNG)
+doParallel::registerDoParallel(cores = params$n_cores)
+```
+
+# Read data
+
+```{r}
+formulation_features_transformer <-
+  read_csv("input/formulation_features_transformer.csv",
+           col_types = cols(.default = col_character()))
+```
+
+
+```{r}
+formulation_features_transformer_crispr_combined <-
+  read_csv("input/formulation_features_transformer_crispr_combined.csv",
+           col_types = cols(.default = col_character()))
+```
+
+
+```{r}
+formulation_features_transformerx <-
+  read_csv("input/formulation_features_transformerx.csv",
+           col_types = cols(.default = col_character()))
+```
+
+
+```{r}
+formulation_features_transformerx_crispr_combined <-
+  read_csv("input/formulation_features_transformerx_crispr_combined.csv",
+           col_types = cols(.default = col_character()))
+```
+
+
+```{r}
+formulation_features_cosine <-
+  read_csv("input/formulation_features_cosine.csv",
+           col_types = cols(.default = col_character()))
+```
+
+
+```{r}
+formulation_features_cosine_crispr_combined <-
+  read_csv("input/formulation_features_cosine_crispr_combined.csv",
+           col_types = cols(.default = col_character()))
+```
+
+
+```{r}
+formulation_features_other <-
+  read_csv("input/formulation_features_other.csv",
+           col_types = cols(.default = col_character()))
+```
+
+
+```{r}
+formulation_features <-
+  bind_rows(formulation_features_transformer,
+            formulation_features_transformer_crispr_combined,
+            formulation_features_transformerx,
+            formulation_features_transformerx_crispr_combined,
+            formulation_features_cosine,
+            formulation_features_cosine_crispr_combined,
+            formulation_features_other)
+```
+
+Create `pert_iname` and `gene` lookup table (because `gene` is missing in the splits data frames)
+
+```{r}
+updated_connections <-
+  read_csv("../0.inspect-metadata/output/JUMP-Target_compounds_crispr_orf_connections.csv",
+           col_types = cols())
+
+gene_lookup_orf <-
+  updated_connections %>%
+  distinct(broad_sample_orf, gene)
+
+gene_lookup_crispr <-
+  updated_connections %>%
+  distinct(broad_sample_crispr, gene)
+
+compound_lookup <-
+  updated_connections %>%
+  distinct(pert_id_compound, pert_iname_compound)
+```
+
+Verify that the list of genes in the two gene lookup tables are identical
+
+```{r}
+all.equal(
+  gene_lookup_orf %>% distinct(gene) %>% arrange(gene),
+  gene_lookup_crispr %>% distinct(gene) %>% arrange(gene)
+)
+```
+
+Load all predictions
+
+```{r}
+prediction_df <-
+  pmap_dfr(formulation_features,
+           function(classifier, formulation, features) {
+             prediction_dfi <-
+               read_csv(
+                 glue(
+                   "../1.analysis/final_binary_predictions/{classifier}__{formulation}__{features}.csv"
+                 ),
+                 col_types = cols()
+               ) %>%
+               process_metadata()
+
+             if (!str_detect(features, "compound") & !str_detect(features, "gene")) {
+               if (str_detect(features, "consensus")) {
+                 prediction_dfi <-
+                   prediction_dfi %>%
+                   rename(gene = genes_crispr)
+
+               } else {
+                 gene_lookup <- gene_lookup_orf
+                 gene_key_column <- "broad_sample_orf"
+
+                 if (features == "crispr") {
+                   gene_lookup <- gene_lookup_crispr
+                   gene_key_column <- "broad_sample_crispr"
+                 }
+
+                 prediction_dfi <-
+                   prediction_dfi %>%
+                   inner_join(gene_lookup,
+                              by = c(gene_key_column))
+
+               }
+
+               prediction_dfi <-
+                 prediction_dfi %>%
+                 inner_join(compound_lookup,
+                            by = c("pert_id_compound"))
+             }
+
+             prediction_dfi <-
+               prediction_dfi %>%
+               select(pert_iname_compound, gene, y_actual, y_prob) %>%
+               mutate(classifier = classifier,
+                      formulation = formulation,
+                      features = features)
+
+             prediction_dfi
+
+           })
+```
+
+Print a sample
+
+```{r}
+prediction_df %>%
+  slice_sample(n=10)
+```
+
+Counts
+
+```{r}
+prediction_df %>%
+  count(classifier, formulation, features, y_actual)
+```
+Save it
+
+```{r}
+prediction_df %>%
+  write_csv("output/prediction_df.csv.gz")
+```
+
+# Score
+
+```{r}
+n_bootstrap <- params$n_bootstrap
+
+top_k_percent <- params$top_k_percent
+```
+
+## Functions
+
+```{r}
+compute_prediction_metrics <-
+  function(prediction_df_, top_k_percent_, only_precision_recall = FALSE) {
+    # sort data
+    prediction_df_ <- prediction_df_ %>% arrange(desc(y_prob))
+    y_actual <- prediction_df_$y_actual
+    y_prob <- prediction_df_$y_prob
+
+    # n: total number of data points
+    n <- nrow(prediction_df_)
+
+    # p: condition positive
+    p <- sum(prediction_df_$y_actual)
+
+    # pp: predicted condition positive
+    if (top_k_percent_ > 0) {
+      pp <- ceiling(top_k_percent_ * n / 100)
+    } else {
+      pp <- p
+    }
+
+    # pp: predicted condition negative
+    pn <- n - pp
+
+    # tp, tn, fp, fn: standard definitions
+    tp <- sum(y_actual[1:pp])
+    fn <- sum(y_actual[(pp + 1):n])
+    fp <- pp - tp
+    tn <- pn - fn
+    precision <- tp / pp
+    recall <- tp / p
+
+    statistics <-
+      data.frame(n, p, pp, pn,
+                 tp, fp, tn, fn,
+                 precision, recall)
+
+    if (!only_precision_recall) {
+      # odds ratio
+      odds_test <-
+        fisher.test(rbind(c(tp, fp),
+                          c(fn, tn)), alternative = "greater")
+
+      oddsratio <- odds_test$estimate
+      oddsnlogp <- -log10(odds_test$p.value)
+
+      # PRAUC
+      prauc <- MLmetrics::PRAUC(y_prob, y_actual)
+
+      statistics <-
+        statistics %>%
+        mutate(oddsratio = oddsratio,
+               oddsnlogp = oddsnlogp,
+               prauc = prauc)
+    }
+
+    statistics
+
+  }
+
+
+# sampling_with_replace = FALSE gives you a regular estimate
+# sampling_with_replace = TRUE and repeat many times to get bootstrap estimate
+report_prediction_metrics <-
+  function(statistic_function,
+           prediction_df_,
+           summary_vars,
+           sampling_with_replace = TRUE,
+           ...) {
+    prediction_df_ %>%
+      group_by(across({{ summary_vars }})) %>%
+      slice_sample(prop = 1, replace = sampling_with_replace) %>%
+      summarize(statistic_function(cur_data(), ...), .groups = "keep") %>%
+      ungroup()
+  }
+```
+
+## Score without bootstrap
+
+### Global metrics, using a relative top-K
+
+```{r}
+set.seed(42)
+
+prediction_metrics_at_k_rel <-
+  report_prediction_metrics(
+    compute_prediction_metrics,
+    prediction_df,
+    c(classifier, formulation, features),
+    sampling_with_replace = FALSE,
+    top_k_percent_ = 0
+  )
+```
+
+### Per-gene and per-compound metrics, using an absolute top-K
+
+```{r}
+set.seed(42)
+
+prediction_metrics_at_k_abs_compound <-
+  report_prediction_metrics(
+    compute_prediction_metrics,
+    prediction_df,
+    c(classifier, formulation, features, pert_iname_compound),
+    sampling_with_replace = FALSE,
+    top_k_percent_ = top_k_percent,
+    only_precision_recall = TRUE
+  )
+
+set.seed(42)
+
+prediction_metrics_at_k_abs_gene <-
+  report_prediction_metrics(
+    compute_prediction_metrics,
+    prediction_df,
+    c(classifier, formulation, features, gene),
+    sampling_with_replace = FALSE,
+    top_k_percent_ = top_k_percent,
+    only_precision_recall = TRUE
+  )
+```
+
+## Score with bootstrap
+
+### Global metrics, using a relative top-K
+
+```{r eval=params$run_bootstrap}
+set.seed(42)
+
+prediction_metrics_at_k_rel_bootstrap <-
+  foreach(i = 1:n_bootstrap,
+          .combine = 'rbind',
+          .inorder = TRUE) %dorng% report_prediction_metrics(
+            compute_prediction_metrics,
+            prediction_df,
+            c(classifier, formulation, features),
+            sampling_with_replace = TRUE,
+            top_k_percent_ = 0
+          )
+
+prediction_metrics_at_k_rel_bootstrap <-
+  prediction_metrics_at_k_rel_bootstrap %>%
+  group_by(classifier, formulation, features, n) %>%
+  summarise(across(everything(),
+                   list(
+                     estimate = mean,
+                     lci = ~ quantile(.x, .025, names = FALSE),
+                     uci = ~ quantile(.x, .975, names = FALSE)
+                   )),
+            .groups = "keep")
+```
+
+# Report
+
+## Without bootstrap
+
+### CSVs
+
+```{r rows.print=20}
+prediction_metrics_at_k_rel %>%
+  format_df() %>%
+  write_csv("output/prediction_metrics_at_k_rel.csv")
+
+prediction_metrics_at_k_abs_compound %>%
+  format_df() %>%
+  write_csv("output/prediction_metrics_at_k_abs_compound.csv")
+
+prediction_metrics_at_k_abs_gene %>%
+  format_df() %>%
+  write_csv("output/prediction_metrics_at_k_abs_gene.csv")
+```
+
+### Plots
+
+```{r fig.height=5, fig.width=4}
+plot_prediction_metrics_at_k_abs_compound <- function(classifier_) {
+  p <-
+    prediction_metrics_at_k_abs_compound %>%
+    filter(classifier == classifier_) %>%
+    mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+    mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+    na.omit() %>%
+    ggplot(aes(recall)) +
+    geom_histogram(binwidth = .05) +
+    facet_grid(features ~ formulation) +
+    ggtitle(glue("Distribution of recall@{top_k_percent}% across compounds: {classifier_}"),
+            subtitle = "Scores are for ranked list of matches per compound")
+
+  print(p)
+
+  ggsave(
+    glue("output/prediction_metrics_at_k_abs_compound_{classifier_}.png"),
+    p,
+    width = 9,
+    height = 9
+  )
+}
+
+plot_prediction_metrics_at_k_abs_compound("transformer")
+plot_prediction_metrics_at_k_abs_compound("transformerx")
+plot_prediction_metrics_at_k_abs_compound("cosine")
+plot_prediction_metrics_at_k_abs_compound("cosine1nn")
+plot_prediction_metrics_at_k_abs_compound("cosine5nn")
+plot_prediction_metrics_at_k_abs_compound("cosineavg")
+```
+
+
+```{r fig.height=5, fig.width=4}
+plot_prediction_metrics_at_k_abs_gene <- function(classifier_) {
+  p <-
+    prediction_metrics_at_k_abs_gene %>%
+    filter(classifier == classifier_) %>%
+    mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+    mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+    na.omit() %>%
+    ggplot(aes(recall)) +
+    geom_histogram(binwidth = .05) +
+    facet_grid(features ~ formulation) +
+    ggtitle(glue("Distribution of recall@{top_k_percent}% across genes: {classifier_}"),
+            subtitle = "Scores are for ranked list of matches per gene")
+
+  print(p)
+
+  ggsave(
+    glue("output/prediction_metrics_at_k_abs_gene_{classifier_}.png"),
+    p,
+    width = 9,
+    height = 9
+  )
+}
+
+plot_prediction_metrics_at_k_abs_gene("transformer")
+plot_prediction_metrics_at_k_abs_gene("transformerx")
+plot_prediction_metrics_at_k_abs_gene("cosine")
+plot_prediction_metrics_at_k_abs_gene("cosine1nn")
+plot_prediction_metrics_at_k_abs_gene("cosine5nn")
+plot_prediction_metrics_at_k_abs_gene("cosineavg")
+```
+
+
+```{r}
+for (i in seq(nrow(formulation_features))) {
+
+  classifier <- formulation_features[[i, "classifier"]]
+
+  if (!(classifier %in% c("transformer", "transformerx", "cosine", "cosine1nn", "cosine5nn", "cosineavg"))) {
+    next
+  }
+
+  formulation <- formulation_features[[i, "formulation"]]
+
+  features <- formulation_features[[i, "features"]]
+
+  # filter to the i'th configuration
+  prediction_df_i <-
+    prediction_df %>%
+    inner_join(formulation_features[i, ],
+               by = c("classifier", "formulation", "features"))
+
+  # duplicated gene-compound matches are averaged
+  # note that this is for plotting alone
+  prediction_df_i <-
+    prediction_df_i %>%
+    group_by(pert_iname_compound, gene) %>%
+    summarize(across(everything(), max), .groups = "keep") %>%
+    ungroup()
+
+  # get ranked lists of matching genes and compounds for each compound and
+  # each gene respectively
+  prediction_df_i <-
+    prediction_df_i %>%
+    arrange(pert_iname_compound, desc(y_prob)) %>%
+    group_by(pert_iname_compound) %>%
+    mutate(gene_rank = row_number(-y_prob)) %>%
+    ungroup() %>%
+    arrange(gene, desc(y_prob)) %>%
+    group_by(gene) %>%
+    mutate(compound_rank = row_number(-y_prob)) %>%
+    ungroup()
+
+  counts <-
+    bind_cols(
+      prediction_df_i %>%
+        group_by(pert_iname_compound) %>%
+        summarize(gene_rank = max(gene_rank)) %>%
+        ungroup() %>%
+        summarize(gene_rank = mean(gene_rank)),
+      prediction_df_i %>%
+        group_by(gene) %>%
+        summarize(compound_rank = max(compound_rank)) %>%
+        ungroup() %>%
+        summarize(compound_rank = mean(compound_rank)),
+      prediction_df_i %>%
+        summarize(
+          gene = length(unique(gene)),
+          pert_iname_compound = length(unique(pert_iname_compound))
+        )
+    )
+
+  # waterfall compound
+  p <-
+    prediction_df_i %>%
+    ggplot(aes(as.factor(gene_rank), pert_iname_compound, fill = y_actual == 1)) +
+    geom_tile() +
+    scale_fill_manual(values = c("#b2df8a", "#1f78b4"), guide = "none") +
+    geom_tile() +
+    scale_x_discrete(labels = NULL, breaks = NULL) +
+    scale_y_discrete(labels = NULL, breaks = NULL) +
+    labs(x = "gene_rank", y = "compound") +
+    coord_equal() +
+    ggtitle(glue("{classifier}:{formulation}:{features}"),
+            subtitle =
+              glue("compounds = {compound_count} avg. gene_rank = {gene_rank_count}",
+                   compound_count = counts$pert_iname_compound,
+                   gene_rank_count = round(counts$gene_rank, 1)
+                   ))
+
+  ggsave(glue("output/waterfall_compound__{classifier}__{formulation}__{features}.png"),
+         p,
+         height = 4)
+
+  # waterfall gene
+  p <-
+    prediction_df_i %>%
+    ggplot(aes(gene, as.factor(compound_rank), fill = y_actual == 1)) +
+    geom_tile() +
+    scale_fill_manual(values = c("#b2df8a", "#1f78b4"), guide = "none") +
+    geom_tile() +
+    scale_x_discrete(labels = NULL, breaks = NULL) +
+    scale_y_discrete(labels = NULL, breaks = NULL) +
+    labs(x = "gene", y = "compound_rank") +
+    coord_equal() +
+    ggtitle(glue("{classifier}:{formulation}:{features}"),
+            subtitle =
+              glue("genes = {gene_count} avg. compound_ranks = {compound_rank_count}",
+                   gene_count = counts$gene,
+                   compound_rank_count = round(counts$compound_rank, 1)
+                   ))
+
+  ggsave(glue("output/waterfall_gene__{classifier}__{formulation}__{features}.png"),
+         p,
+         height = 4)
+
+}
+```
+
+## With bootstrap
+
+### CSVs
+
+```{r eval=params$run_bootstrap}
+prediction_metrics_at_k_rel_bootstrap %>%
+  format_df() %>%
+  write_csv("output/prediction_metrics_at_k_rel_bootstrap.csv")
+```
+
+### Plots
+
+```{r eval=params$run_bootstrap}
+prediction_metrics_at_k_rel_bootstrap_melted <-
+  prediction_metrics_at_k_rel_bootstrap %>%
+  ungroup() %>%
+  select(matches(
+    "classifier|formulation|features|precision|recall|oddsratio|prauc"
+  )) %>%
+  pivot_longer(-c(classifier, formulation, features), names_to = "metric") %>%
+  separate(metric,
+           into = c("metric", "statistic"),
+           sep = "_") %>%
+  pivot_wider(names_from = "statistic", values_from = "value")
+
+top_k_percent_rel <- mean(with(prediction_metrics_at_k_rel, p / n))
+```
+
+
+```{r eval=params$run_bootstrap}
+plot_prediction_metrics_at_k_rel_bootstrap_melted <- function(classifier_) {
+
+  classifier_tag <- paste0(classifier_, collapse = "_")
+
+  p <-
+    prediction_metrics_at_k_rel_bootstrap_melted %>%
+    filter(classifier %in% classifier_) %>%
+    mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+    mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+    ggplot(aes(features, estimate, fill = classifier)) +
+    geom_col(width = .7, position = position_dodge(width=0.9)) +
+    geom_errorbar(
+      aes(ymin = lci, ymax = uci),
+      color = "black",
+      width = .2,
+      position = position_dodge(width=0.9)
+    ) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    facet_grid(metric ~ formulation, scales = "free_y") +
+    ggtitle(
+      glue("Classification metrics (global): {classifier_tag}"),
+      subtitle = glue(
+        "All except prauc are @~{top_k_percent_rel_}%",
+        top_k_percent_rel_ = round(top_k_percent_rel * 100)
+      )
+    )
+
+  ggsave(
+    glue("output/prediction_metrics_at_k_rel_bootstrap_{classifier_tag}.png"),
+    p,
+    width = 9,
+    height = 5
+  )
+
+  p
+
+}
+
+plot_prediction_metrics_at_k_rel_bootstrap_melted("transformer")
+plot_prediction_metrics_at_k_rel_bootstrap_melted("transformerx")
+plot_prediction_metrics_at_k_rel_bootstrap_melted("cosine")
+plot_prediction_metrics_at_k_rel_bootstrap_melted("cosine1nn")
+plot_prediction_metrics_at_k_rel_bootstrap_melted("cosine5nn")
+plot_prediction_metrics_at_k_rel_bootstrap_melted("cosineavg")
+plot_prediction_metrics_at_k_rel_bootstrap_melted(c("transformer", "transformerx", "cosine", "cosine1nn", "cosine5nn", "cosineavg"))
+```
+
+
+```{r eval=params$run_bootstrap}
+p <-
+  prediction_metrics_at_k_rel_bootstrap_melted %>%
+  filter(features == "crispr_orf" & formulation == "pair") %>%
+  ggplot(aes(classifier, estimate)) +
+  geom_col(width = .7) +
+  geom_errorbar(
+    aes(ymin = lci, ymax = uci),
+    color = "black",
+    width = .2,
+  ) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_grid(metric ~ formulation, scales = "free_y") +
+  ggtitle(
+    "Classification metrics (global)",
+    subtitle = glue(
+      "All except prauc are @~{top_k_percent_rel_}%",
+      top_k_percent_rel_ = round(top_k_percent_rel * 100)
+    )
+  )
+
+print(p)
+
+ggsave(
+  "output/prediction_metrics_at_k_rel_bootstrap_all_classifiers.png",
+  p,
+  width = 5,
+  height = 6
+)
+```

@@ -1,0 +1,13 @@
+classifier,formulation,features
+transformer,compound,crispr__consensus
+transformer,compound,crispr_orf__consensus
+transformer,gene,crispr__consensus
+transformer,gene,crispr_orf__consensus
+transformer,pair,crispr__consensus
+transformer,pair,crispr_orf__consensus
+transformer,compound,crispr__max_consensus
+transformer,compound,crispr_orf__max_consensus
+transformer,gene,crispr__max_consensus
+transformer,gene,crispr_orf__max_consensus
+transformer,pair,crispr__max_consensus
+transformer,pair,crispr_orf__max_consensus

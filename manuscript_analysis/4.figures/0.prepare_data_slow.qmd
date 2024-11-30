@@ -1,0 +1,48 @@
+---
+title: "Prepare data"
+format: gfm
+editor: visual
+---
+
+# Setup
+
+```{r}
+library(glue)
+library(tidyverse)
+set.seed(42)
+```
+
+```{r}
+input_path <- file.path("..", "2.inspect-analysis", "output")
+```
+
+```{r}
+save_df <- function(df) {
+  filename <- paste0("output/", deparse(substitute(df)))
+  df %>% write_csv(paste0(filename, ".csv"))
+  df %>% arrow::write_parquet(paste0(filename, ".parquet"))
+}
+```
+
+## Predictions
+
+```{r}
+prediction_df <-
+  read_csv(file.path(input_path, "prediction_df_augmented.csv.gz"), show_col_types = FALSE)
+```
+
+```{r}
+prediction_df_top <-
+  prediction_df %>%
+  mutate(features = str_replace(features, "__max_consensus", "_max")) %>%
+  mutate(features = str_replace(features, "__consensus", "_avg")) %>%
+  mutate(formulation = str_replace(formulation, "pair", "either")) %>%
+  group_by(pert_iname_compound, gene, classifier, formulation, features) %>%
+  arrange(desc(gene_compound_global_pct), .by_group = TRUE) %>%
+  slice_head(n = 1) %>%
+  ungroup()
+```
+
+```{r}
+save_df(prediction_df_top)
+```
