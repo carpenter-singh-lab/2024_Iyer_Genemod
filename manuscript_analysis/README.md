@@ -18,7 +18,7 @@ cd /path/to/this/repo/manuscript_analysis/1.analysis
 ln -s ~/Desktop/pilot-cpjump1-data .
 ```
 
-## Environment Setup 
+## Environment Setup
 
 ### R Environment
 This project uses RStudio and renv for reproducibility. To get started:

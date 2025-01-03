@@ -5,7 +5,7 @@
 2. Clone this repository: `git clone https://github.com/nivedithasi/gene-embed`
 3. Symlink the CPJUMP data in gene-embed: `cd gene-embed` and `ln -s ../pilot-cpjump1-data/ .`
 4. Create a micromamba environment: `micromamba env create -n gene-embed -f env.yaml`. If you do not have micromamba set up, refer to [this guide](https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html).
-5. Activate the environment `micromamba activate gene-embed` and install mkl: `pip install mkl==2022.1.0`.          
+5. Activate the environment `micromamba activate gene-embed` and install mkl: `pip install mkl==2022.1.0`.
 
 ## Download existing experiments
 0. `cd gene-embed/code`

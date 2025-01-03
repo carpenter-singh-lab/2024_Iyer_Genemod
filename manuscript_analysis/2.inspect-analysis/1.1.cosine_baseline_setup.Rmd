@@ -37,11 +37,11 @@ sim_df <- matric::sim_calculate(profiles, method = "cosine")
 
 row_metadata <- attr(sim_df, "row_metadata")
 
-sim_df <- 
-  sim_df %>% 
+sim_df <-
+  sim_df %>%
   matric::sim_annotate(
     row_metadata = row_metadata,
-    annotation_cols = 
+    annotation_cols =
       c("Metadata_modality",
         "Metadata_broad_sample",
         "Metadata_genes",

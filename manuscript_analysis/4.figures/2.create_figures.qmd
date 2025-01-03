@@ -15,23 +15,23 @@ set.seed(42)
 ```{r}
 # https://github.com/wilkelab/cowplot/issues/202#issuecomment-1981802127
 my_get_legend <- function(plot, legend = NULL) {
-  
+
   gt <- ggplotGrob(plot)
-  
+
   pattern <- "guide-box"
   if (!is.null(legend)) {
     pattern <- paste0(pattern, "-", legend)
   }
-  
+
   indices <- grep(pattern, gt$layout$name)
 
   not_empty <- !vapply(
-    gt$grobs[indices], 
-    inherits, what = "zeroGrob", 
+    gt$grobs[indices],
+    inherits, what = "zeroGrob",
     FUN.VALUE = logical(1)
   )
   indices <- indices[not_empty]
-  
+
   if (length(indices) > 0) {
     return(gt$grobs[[indices[1]]])
   }
@@ -64,8 +64,8 @@ names(palette_model) <- model_levels
 plot_metrics <- function(formulation_) {
   metrics <-
     arrow::read_parquet(glue("output/prediction_metrics_at_k_rel_bootstrap_melted_filtered_{formulation_}.parquet"))
-  
-  p <- 
+
+  p <-
     metrics %>%
     ggplot(aes(model, estimate, fill = model)) +
     geom_col(width = .7, position = position_dodge(width = 0.9)) +
@@ -86,11 +86,11 @@ plot_metrics <- function(formulation_) {
     ylab("Precison@R (top ~1%)") +
     theme_minimal() +
     theme(legend.position = "none")
-  
+
   ggsave(glue("figures/lo_{formulation_}_precision.png"), p, width = 5, height = 3)
-  
+
   p
-  
+
 }
 ```
 
@@ -115,7 +115,7 @@ names(palette_manual_dark_2) <- which_connected_train_levels
 ```
 
 ```{r}
-true_test_edge_counts <- 
+true_test_edge_counts <-
   arrow::read_parquet("output/true_test_edge_counts.parquet")
 ```
 
@@ -138,14 +138,14 @@ plot_counts <- function(formulation_) {
     labs(fill = "Connection in\ntraining",
          y = "Num. of positive gene-compound pairs (test)",
          x = NULL)
-  
+
   ggsave(
     glue("figures/lo_{formulation_}_training_bias_counts.png"),
     p,
     width = 3,
     height = 5
   )
-  
+
   p
 }
 ```
@@ -212,7 +212,7 @@ plot_training_global_a <- function(classifier_, prediction_type_, formulation_) 
     ) +
     labs(fill = "Connection in\ntraining",
          y = ylab_text,
-         x = NULL)    
+         x = NULL)
 
   ggsave(
     glue("figures/lo_{formulation_}_training_bias_a_{prediction_type_}_{classifier_}.png"),
@@ -226,20 +226,20 @@ plot_training_global_a <- function(classifier_, prediction_type_, formulation_) 
 ```
 
 ```{r}
-(p_lo_compound_test_edge_percentile <- 
+(p_lo_compound_test_edge_percentile <-
     plot_training_global_a("transformer", prediction_type_ = "global_percentile", formulation_ = "compound"))
 
-(p_lo_gene_test_edge_percentile <- 
+(p_lo_gene_test_edge_percentile <-
     plot_training_global_a("transformer", prediction_type_ = "global_percentile", formulation_ = "gene"))
 
-(p_lo_either_test_edge_percentile <- 
+(p_lo_either_test_edge_percentile <-
     plot_training_global_a("transformer", prediction_type_ = "global_percentile", formulation_ = "either"))
 ```
 
 ## Edge percentiles across counts
 
 ```{r}
-prediction_df_transformer_crispr_orf_max <- 
+prediction_df_transformer_crispr_orf_max <-
   arrow::read_parquet("output/prediction_df_transformer_crispr_orf_max.parquet")
 
 condition_positive_crispr_orf_max <-
@@ -260,22 +260,22 @@ plot_pct_across_count <- function(formulation_, which_count) {
     prediction_df_transformer_crispr_orf_max <-
       prediction_df_transformer_crispr_orf_max %>%
       mutate(n_cpds = as.factor(n_cpds))
-    
+
     x_var <- "n_cpds"
     facet_var <- "n_genes"
-    
+
   } else if (which_count == "compound") {
     prediction_df_transformer_crispr_orf_max <-
       prediction_df_transformer_crispr_orf_max %>%
       mutate(n_genes = as.factor(n_genes))
-    
+
     x_var <- "n_genes"
     facet_var <- "n_cpds"
-    
+
   } else {
     stop()
   }
-  
+
   p <-
     prediction_df_transformer_crispr_orf_max %>%
     filter(formulation == formulation_) %>%
@@ -299,7 +299,7 @@ plot_pct_across_count <- function(formulation_, which_count) {
       breaks = c(0, 1, 10, 50, 100) / 100
     ) +
     scale_color_manual(values = palette_manual_dark_2)
-  
+
   if (which_count == "gene") {
     p <- p +
       facet_wrap( ~ n_genes,
@@ -313,12 +313,12 @@ plot_pct_across_count <- function(formulation_, which_count) {
   } else {
     stop()
   }
-  
+
   p <- p +
     labs(color = "Connection in\ntraining",
          y = "Percentile of pos. gene-cpd. pair (test; log scale)") +
     theme_minimal()
-  
+
   ggsave(
     glue(
       "figures/lo_{formulation_}_pct_across_{which_count}_count.png"
@@ -327,32 +327,32 @@ plot_pct_across_count <- function(formulation_, which_count) {
     width = 8,
     height = 5
   )
-  
+
   p
-  
+
 }
 
 ```
 
 ```{r}
-(p_lo_compound_pct_across_gene_count <- 
+(p_lo_compound_pct_across_gene_count <-
    plot_pct_across_count(formulation_ = "compound", which_count = "gene"))
 
-(p_lo_gene_pct_across_gene_count <- 
+(p_lo_gene_pct_across_gene_count <-
     plot_pct_across_count(formulation_ = "gene", which_count = "gene"))
 
-(p_lo_either_pct_across_gene_count <- 
+(p_lo_either_pct_across_gene_count <-
     plot_pct_across_count(formulation_ = "either", which_count = "gene"))
 ```
 
 ```{r}
-(p_lo_compound_pct_across_compound_count <- 
+(p_lo_compound_pct_across_compound_count <-
    plot_pct_across_count(formulation_ = "compound", which_count = "compound"))
 
-(p_lo_gene_pct_across_compound_count <- 
+(p_lo_gene_pct_across_compound_count <-
     plot_pct_across_count(formulation_ = "gene", which_count = "compound"))
 
-(p_lo_either_pct_across_compound_count <- 
+(p_lo_either_pct_across_compound_count <-
     plot_pct_across_count(formulation_ = "either", which_count = "compound"))
 ```
 
@@ -391,7 +391,7 @@ print(p)
 ## Fig 2
 
 ```{r}
-p_fig2 <- 
+p_fig2 <-
   cowplot::plot_grid(
   p_lo_compound_precision,
   p_lo_compound_training_bias_counts + theme(legend.position="none"),
@@ -418,13 +418,13 @@ ggsave(
 )
 
 p_fig2_w_legend
-  
+
 ```
 
 ## Fig 3
 
 ```{r}
-p_fig3 <- 
+p_fig3 <-
   cowplot::plot_grid(
   p_lo_gene_precision,
   p_lo_gene_training_bias_counts + theme(legend.position="none"),
@@ -451,13 +451,13 @@ ggsave(
 )
 
 p_fig3_w_legend
-  
+
 ```
 
 ## Fig 4
 
 ```{r}
-p_fig4 <- 
+p_fig4 <-
   cowplot::plot_grid(
   p_lo_either_precision,
   p_lo_either_training_bias_counts + theme(legend.position="none"),
@@ -484,5 +484,5 @@ ggsave(
 )
 
 p_fig4_w_legend
-  
+
 ```

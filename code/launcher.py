@@ -38,7 +38,7 @@ def run_experiment(config: dict):
 
     loss_fn = nn.CrossEntropyLoss()
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    
+
     # Get data
     loaders = get_loaders(config['feature_set'], config['split_folder'], config['split'],
                           config['batch_size'], config['permute'])

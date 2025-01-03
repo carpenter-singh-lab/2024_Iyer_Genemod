@@ -31,7 +31,7 @@ save_df <- function(df, save_csv = TRUE) {
 ## Metrics
 
 ```{r}
-prediction_metrics_at_k_rel_bootstrap <- 
+prediction_metrics_at_k_rel_bootstrap <-
   read_csv(file.path(input_path, "prediction_metrics_at_k_rel_bootstrap.csv"), show_col_types = FALSE)
 
 prediction_metrics_at_k_rel <-
@@ -73,7 +73,7 @@ prediction_metrics_at_k_rel_bootstrap_melted_filtered <-
 ```{r}
 filter_and_prepare_metrics <-
   function(formulation_) {
-    
+
     formulation_code <-
       ifelse(formulation_ == "either",
              "gene_compound",
@@ -88,22 +88,22 @@ filter_and_prepare_metrics <-
       "crispr_orf_max__transformer", "model\n(w embed.)",
       "crispr_orf_max__transformerx", "model\n(w/o embed.)"
     )
-    
+
     model_ordering <- c("gene-cpd\nsimil.",
                         "1-NN\n(cpd)",
                         "1-NN\n(gene)",
                         "1-NN\n(gene+cpd)",
                         "model\n(w/o embed.)",
                         "model\n(w embed.)")
-    
+
     prediction_metrics_at_k_rel_bootstrap_melted_filtered_ <-
       prediction_metrics_at_k_rel_bootstrap_melted_filtered %>%
       filter(formulation %in% c(formulation_)) %>%
       left_join(features_classifier__model, by = "features_classifier") %>%
       mutate(model = factor(model, levels = model_ordering, ordered = TRUE))
-    
+
     prediction_metrics_at_k_rel_bootstrap_melted_filtered_
-    
+
   }
 
 ```
@@ -241,12 +241,12 @@ condition_positive <-
   group_by(classifier, formulation, features) %>%
   summarize(p = sum(y_actual),
             n = n(),
-            p_frac = p / n, 
+            p_frac = p / n,
             .groups = "keep") %>%
   ungroup() %>%
   group_by(formulation, features) %>%
   summarise(p_frac_min = min(p_frac),
-            p_frac_max = max(p_frac), 
+            p_frac_max = max(p_frac),
             .groups = "keep")
 ```
 

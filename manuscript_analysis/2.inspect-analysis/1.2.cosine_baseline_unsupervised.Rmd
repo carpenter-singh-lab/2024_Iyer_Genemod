@@ -24,12 +24,12 @@ sim_df <-
   select(Metadata_broad_sample1,
          Metadata_broad_sample2,
          Metadata_genes2,
-         sim) 
+         sim)
 ```
 
-# Read transformer predictions 
+# Read transformer predictions
 
-We don't care about the predictions themselves; we just want the scaffolding so 
+We don't care about the predictions themselves; we just want the scaffolding so
 that we can fill in the predictions
 
 ```{r}
@@ -49,11 +49,11 @@ prediction_df <-
                  ),
                  col_types = cols()
                )
-             
+
              prediction_dfi %>%
                mutate(formulation = formulation,
                       features = features)
-             
+
            })
 
 prediction_df <-
@@ -101,7 +101,7 @@ prediction_df <-
   mutate(y_prob_crispr = abs(sim)) %>%
   select(-sim) %>%
   left_join(
-    # We don't need Metadata_genes2 for ORFs; it's only needed for CRISPR 
+    # We don't need Metadata_genes2 for ORFs; it's only needed for CRISPR
     # when we later compute CRISPR consensus
     sim_df %>% select(-Metadata_genes2),
     by = c(
@@ -111,7 +111,7 @@ prediction_df <-
   ) %>%
   mutate(y_prob_orf = abs(sim)) %>%
   select(-sim) %>%
-  mutate(y_prob = 
+  mutate(y_prob =
            case_when(
              is.na(y_prob_orf) ~ y_prob_crispr,
              is.na(y_prob_crispr) ~ y_prob_orf,

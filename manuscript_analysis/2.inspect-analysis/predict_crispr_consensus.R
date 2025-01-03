@@ -28,7 +28,7 @@ predict_crispr_consensus <- function(prediction_df, y_pos_frac_thresh) {
       y_pred_mean,
       y_pred_max
     )
-  
+
   prediction_df_crispr_consensus_mean <-
     prediction_df_crispr_consensus %>%
     select(
@@ -41,7 +41,7 @@ predict_crispr_consensus <- function(prediction_df, y_pos_frac_thresh) {
       y_pred = y_pred_mean
     ) %>%
     mutate(features = str_c(features, "__consensus"))
-  
+
   prediction_df_crispr_consensus_max <-
     prediction_df_crispr_consensus %>%
     select(
@@ -54,10 +54,10 @@ predict_crispr_consensus <- function(prediction_df, y_pos_frac_thresh) {
       y_pred = y_pred_max
     ) %>%
     mutate(features = str_c(features, "__max_consensus"))
-  
+
   prediction_df_crispr_consensus <-
     bind_rows(prediction_df_crispr_consensus_mean,
               prediction_df_crispr_consensus_max)
-  
+
   prediction_df_crispr_consensus
 }

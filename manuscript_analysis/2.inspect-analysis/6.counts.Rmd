@@ -15,8 +15,8 @@ library(tidyverse)
 ## Read splits
 
 ```{r}
-formulation_features <- 
-  read_csv("input/formulation_features_transformer.csv", 
+formulation_features <-
+  read_csv("input/formulation_features_transformer.csv",
            col_types = cols(.default = col_character()))
 
 ```
@@ -85,7 +85,7 @@ Regarding compound-together: I think I know what's going on. It looks like the d
 
 The single target picked is [arbitrary](https://github.com/jump-cellpainting/pilot-cpjump1-analysis/issues/4#issuecomment-1024138895), so we will compound-together from our analysis completely, because it's essentially not very different from leave-out-compound (just that there are fewer sisters, but not no sisters, across train and test). Thankfully, leave-out-gene provides a very similar configuration (I think), so we don't lose out much.
 
-# Check leave-out-pair 
+# Check leave-out-pair
 
 ## Read original gene-compound matrix
 
@@ -102,13 +102,13 @@ x0 <-
 
 
 ```{r}
-x0 %>% 
+x0 %>%
   count(is_connected)
 ```
 ## Specify counts in the specific split we use
 
 ```{r}
-training_bias_counts_genemod <- 
+training_bias_counts_genemod <-
   data_frame(both = 42, compound = 32, gene =  5, neither = 23)
 ```
 
@@ -142,7 +142,7 @@ create_splits <- function(x) {
     select(-s) %>%
     mutate(across(c(gene, pert_iname_compound), as.factor)) %>%
     select(split_set, is_connected, gene, pert_iname_compound) %>%
-    arrange(split_set, is_connected, gene, pert_iname_compound) 
+    arrange(split_set, is_connected, gene, pert_iname_compound)
 }
 ```
 
@@ -152,17 +152,17 @@ get_training_bias_counts <- function(splits_i) {
   splits_i <-
     splits_i %>%
     filter(is_connected)
-  
+
   gene_train_count <-
     splits_i %>%
     filter(split_set == "train") %>%
     count(gene, name = "n_connected_compounds_train", .drop = FALSE)
-  
+
   compound_train_count <-
     splits_i %>%
     filter(split_set == "train") %>%
     count(pert_iname_compound, name = "n_connected_genes_train", .drop = FALSE)
-  
+
   training_bias <-
     splits_i %>%
     filter(split_set == "test") %>%
@@ -180,9 +180,9 @@ get_training_bias_counts <- function(splits_i) {
         (n_connected_genes_train  > 0) ~ "both"
     )) %>%
     ungroup() %>%
-    mutate(which_connected_train = factor(which_connected_train, levels = c("both", "compound", "gene", "neither"))) 
-  
-  training_bias %>% 
+    mutate(which_connected_train = factor(which_connected_train, levels = c("both", "compound", "gene", "neither")))
+
+  training_bias %>%
     count(which_connected_train, .drop = FALSE) %>% pivot_wider(names_from = "which_connected_train", values_from = n, values_fill = 0)
 
 }
@@ -202,7 +202,7 @@ x0 %>%
 ```
 
 ```{r eval=TRUE}
-training_bias_counts <- 
+training_bias_counts <-
   seq(1000) %>%
   map_df(~get_training_bias_counts(create_splits(x0)))
 
@@ -218,7 +218,7 @@ training_bias_counts <-
 
 
 ```{r}
-training_bias_counts <- 
+training_bias_counts <-
   training_bias_counts %>%
   mutate(both_frac     = both     / (both + gene + compound + neither),
          compound_frac = compound / (both + gene + compound + neither),
@@ -238,18 +238,18 @@ training_bias_counts_genemod <-
 training_bias_counts %>%
   select(matches("frac")) %>%
   pivot_longer(everything(), names_to = "which_connected", values_to = "frac") %>%
-  ggplot(aes(frac)) + 
+  ggplot(aes(frac)) +
   geom_histogram(bins = 100) +
-  geom_vline(data = 
+  geom_vline(data =
                training_bias_counts_genemod %>%
                select(matches("frac")) %>%
-               pivot_longer(everything(), 
-                            names_to = "which_connected", 
+               pivot_longer(everything(),
+                            names_to = "which_connected",
                             values_to = "frac"),
              aes(xintercept = frac),
              color = "red"
              ) +
-  facet_wrap(~which_connected) 
+  facet_wrap(~which_connected)
 ```
 
 The counts we have in genemod are not rare after all (although `compound` is on the lower side, and `neither` on the higher side though)

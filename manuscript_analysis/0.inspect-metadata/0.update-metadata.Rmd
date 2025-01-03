@@ -6,10 +6,10 @@ title: "Inspect JUMP-Target metadata and update gene-compound connections"
 
 We use additional target annotations available from clue.io/repurposing to produce
 
-1. An expanded set of target annotations: `output/JUMP-Target_compound_metadata_all_targets.csv`, 
+1. An expanded set of target annotations: `output/JUMP-Target_compound_metadata_all_targets.csv`,
 along with two different versions of the same information that are easier to browse:  `output/JUMP-Target_compound_metadata_all_targets_per_compound.csv` and `output/JUMP-Target_compound_metadata_all_targets_per_target.csv`
-2. An expanded set of connections between ORFs, CRISPRs, and compounds: `output/JUMP-Target_compounds_crispr_orf_connections.csv`, along with different 
-version of the same information, stored as a gene x compound matrix: 
+2. An expanded set of connections between ORFs, CRISPRs, and compounds: `output/JUMP-Target_compounds_crispr_orf_connections.csv`, along with different
+version of the same information, stored as a gene x compound matrix:
 `output/JUMP-Target_gene_compound_matrix.csv`
 
 # Setup
@@ -103,8 +103,8 @@ crispr_metadata <-
 ## Drugs
 
 ```{r}
-compound_pert_iname <- 
-  compound_metadata %>% 
+compound_pert_iname <-
+  compound_metadata %>%
   select(pert_iname) %>%
   mutate(pert_iname = str_split(pert_iname, "\\|")) %>%
   unnest(cols = c(pert_iname)) %>%
@@ -117,18 +117,18 @@ Number of unique `pert_iname`s
 ```{r}
 compound_pert_iname %>%
   anti_join(data.frame(pert_iname = "DMSO")) %>%
-  count() 
+  count()
 ```
 
-Create a complete mapping between `pert_id`s and `pert_iname`s for compounds, 
+Create a complete mapping between `pert_id`s and `pert_iname`s for compounds,
 using `drug_target_samples` i.e. get all possible `pert_id` for a given
 `pert_iname`.
 
 ```{r}
-compound_pert_iname_pert_id <- 
+compound_pert_iname_pert_id <-
   compound_pert_iname %>%
   distinct(pert_iname) %>%
-  inner_join(drug_target_samples %>% 
+  inner_join(drug_target_samples %>%
                distinct(pert_id, pert_iname)) %>%
   distinct()
 ```
@@ -144,7 +144,7 @@ compound_pert_iname_pert_id %>%
 
 ```{r}
 compound_pert_iname_pert_id %>%
-  add_count(pert_id) %>% 
+  add_count(pert_id) %>%
   filter(n > 1)
 ```
 
@@ -152,7 +152,7 @@ compound_pert_iname_pert_id %>%
 
 ```{r rows.print=25}
 compound_pert_iname_pert_id %>%
-  add_count(pert_iname) %>% 
+  add_count(pert_iname) %>%
   filter(n > 1)
 ```
 
@@ -161,7 +161,7 @@ compound_pert_iname_pert_id %>%
 ```{r rows.print=25}
 compound_pert_iname_pert_id %>%
   inner_join(compound_metadata %>% distinct(pert_id)) %>%
-  add_count(pert_iname) %>% 
+  add_count(pert_iname) %>%
   filter(n > 1)
 ```
 
@@ -174,7 +174,7 @@ models goes:
 ```{r}
 compound_pert_iname %>%
   anti_join(data.frame(pert_iname = "DMSO")) %>%
-  count() 
+  count()
 ```
 
 ### Get full list of targets
@@ -182,11 +182,11 @@ compound_pert_iname %>%
 List all genes present in the ORFs / CRISPRs in `JUMP-Target-1`
 
 ```{r}
-jump_target_genes <- 
+jump_target_genes <-
   bind_rows(
     crispr_metadata %>% distinct(gene),
     orf_metadata %>% distinct(gene),
-  ) %>% 
+  ) %>%
   distinct(gene) %>%
   na.omit()
 ```
@@ -200,8 +200,8 @@ jump_target_genes %>%
 List compound `pert_id`s present in `JUMP-Target-1`
 
 ```{r}
-jump_target_compound_pert_id <- 
-  compound_metadata %>% 
+jump_target_compound_pert_id <-
+  compound_metadata %>%
   distinct(pert_id, pert_iname) %>%
   na.omit()
 ```
@@ -212,7 +212,7 @@ jump_target_compound_pert_id %>%
   count()
 ```
 
-Get `(pert_id, pert_iname, target)` map 
+Get `(pert_id, pert_iname, target)` map
 
 ```{r}
 compound_full_targets <-
@@ -321,19 +321,19 @@ compound_full_targets %>%
 
 
 ```{r}
-pert_id_pert_name_counts <- 
+pert_id_pert_name_counts <-
   compound_full_targets %>%
   distinct(pert_iname, pert_id) %>%
   add_count(pert_iname, name = "n_pert_iname")  %>%
   add_count(pert_id, name = "n_pert_id")
 ```
 
-The compounds have the same name but different `pert_id`s. 
-There are different reasons for why this can be the case, but we should treat 
+The compounds have the same name but different `pert_id`s.
+There are different reasons for why this can be the case, but we should treat
 them, essentially, as replicates when training predictive models.
 
 ```{r}
-pert_id_pert_name_counts %>% 
+pert_id_pert_name_counts %>%
   filter((n_pert_iname > 1) | (n_pert_id > 1)) %>%
   arrange(n_pert_iname, pert_iname, n_pert_id, pert_id)
 ```
@@ -353,7 +353,7 @@ read_csv("output/JUMP-Target_compound_metadata_all_targets.csv", col_types = col
   group_by(pert_iname) %>%
   summarize(target = paste0(target, collapse = "|")) %>%
   write_csv("output/JUMP-Target_compound_metadata_all_targets_per_compound.csv")
-  
+
 read_csv("output/JUMP-Target_compound_metadata_all_targets.csv", col_types = cols()) %>%
   arrange(target, pert_iname) %>%
   group_by(target) %>%
@@ -367,20 +367,20 @@ read_csv("output/JUMP-Target_compound_metadata_all_targets.csv", col_types = col
 Get the dictionaries
 
 ```{r}
-compound_metadata_x <- 
-  compound_full_targets %>% 
-  distinct(pert_id, pert_iname, target) %>% 
+compound_metadata_x <-
+  compound_full_targets %>%
+  distinct(pert_id, pert_iname, target) %>%
   select(pert_id_compound = pert_id, pert_iname_compound = pert_iname, gene = target)
 
-orf_metadata_x <- 
-  orf_metadata %>% 
-  distinct(broad_sample, gene) %>% 
+orf_metadata_x <-
+  orf_metadata %>%
+  distinct(broad_sample, gene) %>%
   select(broad_sample_orf = broad_sample, gene)
 
-crispr_metadata_x <- 
-  crispr_metadata %>% 
-  distinct(broad_sample, gene) %>% 
-  select(broad_sample_crispr = broad_sample, gene) %>% 
+crispr_metadata_x <-
+  crispr_metadata %>%
+  distinct(broad_sample, gene) %>%
+  select(broad_sample_crispr = broad_sample, gene) %>%
   na.omit()
 ```
 
@@ -388,8 +388,8 @@ crispr_metadata_x <-
 
 ```{r}
 connections <-
-  compound_metadata_x %>% 
-  inner_join(orf_metadata_x, by = "gene") %>% 
+  compound_metadata_x %>%
+  inner_join(orf_metadata_x, by = "gene") %>%
   inner_join(crispr_metadata_x, by = "gene") %>%
   select(gene, pert_iname_compound, pert_id_compound, broad_sample_orf, broad_sample_crispr)
 ```
@@ -413,9 +413,9 @@ compound_full_targets %>%
 What's the difference?
 
 ```{r}
-extra_genes <- 
+extra_genes <-
   compound_full_targets %>%
-  distinct(target) %>% 
+  distinct(target) %>%
   anti_join(connections %>% distinct(gene), by = c("target" = "gene"))
 ```
 
@@ -434,7 +434,7 @@ These genes below have CRISPRs / ORFs but not compounds targeting them
 (these are all the so-called ORF negcons)
 
 ```{r}
-jump_target_genes %>% 
+jump_target_genes %>%
   anti_join(connections %>% distinct(gene)) %>%
   left_join(orf_metadata)
 ```
@@ -448,8 +448,8 @@ connections %>%
   distinct(pert_iname_compound, pert_id_compound, broad_sample_orf) %>%
   count
 ```
-NOT counting compounds with different `pert_id`s separately; this is the right 
-way to do it for the application at hand i.e. training models that can predict 
+NOT counting compounds with different `pert_id`s separately; this is the right
+way to do it for the application at hand i.e. training models that can predict
 gene-compound matches.
 
 ```{r}
@@ -541,7 +541,7 @@ Counting compounds with different `pert_id`s separately
 connections %>%
   distinct(pert_id_compound, broad_sample_orf) %>%
   group_by(broad_sample_orf) %>%
-  tally(name = "n_compounds") %>% 
+  tally(name = "n_compounds") %>%
   group_by(n_compounds) %>%
   tally(name = "n_orfs") %>%
   select(n_orfs, n_compounds) %>%
@@ -554,7 +554,7 @@ NOT counting compounds with different `pert_id`s separately; this is the right w
 connections %>%
   distinct(pert_iname_compound, broad_sample_orf) %>%
   group_by(broad_sample_orf) %>%
-  tally(name = "n_compounds") %>% 
+  tally(name = "n_compounds") %>%
   group_by(n_compounds) %>%
   tally(name = "n_orfs") %>%
   select(n_orfs, n_compounds) %>%
@@ -572,7 +572,7 @@ Counting compounds with different `pert_id`s separately
 connections %>%
   distinct(pert_id_compound, broad_sample_crispr) %>%
   group_by(broad_sample_crispr) %>%
-  tally(name = "n_compounds") %>% 
+  tally(name = "n_compounds") %>%
   group_by(n_compounds) %>%
   tally(name = "n_crisprs") %>%
   select(n_crisprs, n_compounds) %>%
@@ -585,7 +585,7 @@ NOT counting compounds with different `pert_id`s separately; this is the right w
 connections %>%
   distinct(pert_iname_compound, broad_sample_crispr) %>%
   group_by(broad_sample_crispr) %>%
-  tally(name = "n_compounds") %>% 
+  tally(name = "n_compounds") %>%
   group_by(n_compounds) %>%
   tally(name = "n_crisprs") %>%
   select(n_crisprs, n_compounds) %>%

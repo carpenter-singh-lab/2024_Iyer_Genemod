@@ -85,7 +85,7 @@ prediction_df_cosineknn <-
 
 # this join can (and does in this case) result in a duplication of rows because
 # ("pert_iname_compound", "gene") is not uniqe
-# e.g. (BVT-948, PTPN2) occurs twice 
+# e.g. (BVT-948, PTPN2) occurs twice
 prediction_df_compare_classifier <-
   inner_join(
     prediction_df_transformer,
@@ -97,7 +97,7 @@ prediction_df_compare_classifier <-
 prediction_df_compare_classifier %>%
   count(formulation, features_transformer, y_actual)
 
-# this join can (and does in this case) result in a duplication of rows 
+# this join can (and does in this case) result in a duplication of rows
 # (same as above)
 prediction_df_compare_classifierx <-
   inner_join(
@@ -449,8 +449,8 @@ relationship_transformer_vs_transformerx_counts_plot <-
         formulation
       ) %>%
       summarise(pp = sum(y_actual), .groups = "keep")
-    
-    
+
+
     prediction_df_compare_classifierx_counts <-
       prediction_df_compare_classifierx %>%
       filter(y_actual == ground_truth * 1.) %>%
@@ -478,7 +478,7 @@ relationship_transformer_vs_transformerx_counts_plot <-
         gene_compound_global_pct_transformerx_is_top,
         .drop = FALSE
       )
-    
+
     p <-
       prediction_df_compare_classifierx_counts %>%
       filter(features_transformerx == features_transformer) %>%
@@ -510,7 +510,7 @@ relationship_transformer_vs_transformerx_counts_plot <-
       ) +
       theme(plot.caption = element_text(face = "italic"),
             legend.position = "bottom")
-    
+
     p
   }
 ```

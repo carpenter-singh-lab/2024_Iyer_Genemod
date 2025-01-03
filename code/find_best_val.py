@@ -24,7 +24,7 @@ def retrieve_test_of_best_val(source_folder):
             folder_name = os.path.basename(folder)
             test_scores_file = os.path.join(folder, files_to_gather)
             config_file = os.path.join(folder, 'config.json')
-            
+
             # Read contents of test_scores.json
             try:
                 test_scores_content = read_json_file(test_scores_file)

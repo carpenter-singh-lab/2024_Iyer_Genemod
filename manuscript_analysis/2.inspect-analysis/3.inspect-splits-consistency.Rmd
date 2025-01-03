@@ -13,8 +13,8 @@ library(tidyverse)
 # Read data
 
 ```{r}
-formulation_features <- 
-  read_csv("input/formulation_features_transformer.csv", 
+formulation_features <-
+  read_csv("input/formulation_features_transformer.csv",
            col_types = cols(.default = col_character()))
 
 ```
@@ -44,9 +44,9 @@ splits_hash_df <-
       read_csv(glue("output/splits__{formulation}__{features}.csv.gz"),
                col_types = cols())  %>%
       arrange(across(everything()))
-    
+
     hash <- str_sub(digest::digest(splits), 1, 8)
-    
+
     tibble(formulation,
            features,
            hash)
