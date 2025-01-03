@@ -96,7 +96,7 @@ splits_train <-
 ```
 
 Augment the test split with connections from train:
-For each gene-compound pair, get either 
+For each gene-compound pair, get either
 
 - all compounds connected to the gene in train (for leave-out-compound)
 - all genes connected to the compound in train (for leave-out-gene)
@@ -141,7 +141,7 @@ sim_df_modality <-
   ungroup()
 ```
 
-Rescale `sim` to stretch the range [-1,1] so that gene-gene and compound-compaund similarities are comparable. 
+Rescale `sim` to stretch the range [-1,1] so that gene-gene and compound-compaund similarities are comparable.
 Use rank to make it uniform
 
 ```{r}
@@ -204,7 +204,7 @@ y_pos_thread <- quantile(splits_test_aug_modality_avg$y_prob, 1-y_pos_frac, name
 Create prediction data frame
 
 ```{r}
-prediction_df <- 
+prediction_df <-
   splits_test_aug_modality_avg %>%
   select(Metadata_gene = gene,
          Metadata_pert_iname_compound = pert_iname_compound,
@@ -247,7 +247,7 @@ Sanity check
 ```{r}
 modality_col <- sym(paste0("Metadata_", params$formulation_column))
 
-count_check_1 <- 
+count_check_1 <-
   prediction_df %>%
   mutate(x = ifelse(y_pred, y_prob, 1 - y_prob)) %>%
   count(!!modality_col, x, name = "n_repeats") %>%
@@ -257,10 +257,10 @@ count_check_2 <-
   prediction_df %>%
   count(!!modality_col, name = "n_repeats") %>%
   count(n_repeats)
-  
+
 compare::compare(
-  count_check_1, 
-  count_check_2, 
+  count_check_1,
+  count_check_2,
   allowAll = T)
 ```
 

@@ -62,7 +62,7 @@ def write_config(config, output_dir):
         raise ValueError('File already exists')
     with config_path.open('w', encoding='utf8') as fwrite:
         json.dump(config, fwrite)
-        
+
 
 
 def main():
@@ -86,14 +86,14 @@ def main():
                         help='random seed to generate hyperparams')
 
     args = parser.parse_args()
-    
+
     if args.permute:
         generate_configs(args.split, args.feature_set, True, args.num_configs,
                                 args.output_dir, args.seed)
     else:
         generate_configs(args.split, args.feature_set, False, args.num_configs,
                         args.output_dir, args.seed)
-                
+
 
 if __name__ == "__main__":
     main()

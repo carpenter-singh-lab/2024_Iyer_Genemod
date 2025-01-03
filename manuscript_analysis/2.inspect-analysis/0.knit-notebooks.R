@@ -3,7 +3,7 @@ output_format <- "github_document"
 render_notebook <-
   function(notebook_name, output_suffix = "", ...) {
     output_file <- paste0(notebook_name, output_suffix, ".md")
-    
+
     rmarkdown::render(
       glue::glue("{notebook_name}.Rmd"),
       output_file = output_file,
@@ -11,13 +11,13 @@ render_notebook <-
       output_format = output_format,
       ...
     )
-    
+
     output_file_rel <- file.path("knit_notebooks", output_file)
-    
+
     read_lines(output_file_rel) %>%
       str_remove_all(file.path(getwd(), "knit_notebooks/")) %>%
       write_lines(output_file_rel)
-    
+
   }
 
 
@@ -48,7 +48,7 @@ for (i in seq(nrow(formulation_features))) {
   render_notebook_inspect_splits_predictions(formulation_features[i, ])
 }
 
-splits_reports <- 
+splits_reports <-
   list.files("output", pattern = "splits_report__.*.csv", full.names = T) %>%
   map(read_csv, col_types = cols()) %>%
   reduce(inner_join, by = "count")
@@ -86,7 +86,7 @@ bind_cols(
   write_csv("output/splits_report_checks.csv")
 
 
-predictions_reports <- 
+predictions_reports <-
   list.files("output", pattern = "predictions_report__.*.csv", full.names = T) %>%
   map(read_csv, col_types = cols()) %>%
   reduce(inner_join, by = "count")
@@ -95,7 +95,7 @@ predictions_reports %>%
   write_csv("output/predictions_report_combined.csv")
 
 # this needs https://imagemagick.org/
- 
+
 system("montage -label %t -tile 1x -geometry +1+1 -pointsize 60 output/gene_compound_matrix__*.png output/montage_gene_compound_matrix.png")
 
 system("montage -label %t -tile 1x -geometry +1+1 -pointsize 60 output/gene_compound_matrix_sampled__*.png output/montage_gene_compound_matrix_sampled.png")

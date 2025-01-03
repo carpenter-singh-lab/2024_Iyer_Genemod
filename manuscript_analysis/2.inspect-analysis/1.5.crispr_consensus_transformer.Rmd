@@ -18,26 +18,26 @@ JUMP_Target_compounds_crispr_orf_connections <-
 
 ```{r}
 crispr_gene <-
-  JUMP_Target_compounds_crispr_orf_connections %>% 
-  distinct(gene, broad_sample_crispr) %>% 
+  JUMP_Target_compounds_crispr_orf_connections %>%
+  distinct(gene, broad_sample_crispr) %>%
   select(Metadata_genes_CRISPR = gene,
          Metadata_broad_sample_CRISPR = broad_sample_crispr)
 ```
 
 
 ```{r}
-formulation_features_transformer_crispr <- 
+formulation_features_transformer_crispr <-
   read_csv("input/formulation_features_transformer.csv") %>%
-  filter(str_detect(features, "crispr")) %>% 
+  filter(str_detect(features, "crispr")) %>%
   distinct()
 
 formulation_features_transformer_crispr
 ```
 
 ```{r}
-formulation_features_transformerx_crispr <- 
+formulation_features_transformerx_crispr <-
   read_csv("input/formulation_features_transformerx.csv") %>%
-  filter(str_detect(features, "crispr")) %>% 
+  filter(str_detect(features, "crispr")) %>%
   distinct()
 
 formulation_features_transformerx_crispr
@@ -56,7 +56,7 @@ bind_rows(
         ),
         show_col_types = FALSE
       )
-    
+
     df <-
       df %>%
       inner_join(crispr_gene, by = "Metadata_broad_sample_CRISPR") %>%
@@ -71,7 +71,7 @@ bind_rows(
              y_actual,
              y_prob) %>%
       group_by(Metadata_genes_CRISPR, Metadata_broad_sample_Compound)
-    
+
     # y_prob - this is the only column for which we need to compute the mean per group
     # y_actual - this is identical across rows in the same group, so computing the mean is trivially ok
     # y_pred - this needs to be recomputed after computing y_prob
@@ -84,7 +84,7 @@ bind_rows(
           "../1.analysis/final_binary_predictions/{classifier}__{formulation}__{features}__consensus.csv"
         )
       )
-    
+
     # same as above (here, we compute the max instead of the mean)
     df %>%
       summarise(across(everything(), max), .groups = "keep") %>%
@@ -95,6 +95,6 @@ bind_rows(
           "../1.analysis/final_binary_predictions/{classifier}__{formulation}__{features}__max_consensus.csv"
         )
       )
-    
+
   })
 ```

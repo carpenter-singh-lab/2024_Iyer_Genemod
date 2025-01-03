@@ -38,20 +38,20 @@ features <- params$features
 Create `pert_iname` and `gene` lookup table (because `gene` is missing in the splits data frames)
 
 ```{r}
-updated_connections <- 
+updated_connections <-
   read_csv("../0.inspect-metadata/output/JUMP-Target_compounds_crispr_orf_connections.csv",
            col_types = cols())
 
-gene_lookup_orf <- 
-  updated_connections %>% 
+gene_lookup_orf <-
+  updated_connections %>%
   distinct(broad_sample_orf, gene)
 
-gene_lookup_crispr <- 
-  updated_connections %>% 
+gene_lookup_crispr <-
+  updated_connections %>%
   distinct(broad_sample_crispr, gene)
 
-compound_lookup <- 
-  updated_connections %>% 
+compound_lookup <-
+  updated_connections %>%
   distinct(pert_id_compound, pert_iname_compound)
 ```
 
@@ -71,7 +71,7 @@ gene_lookup <- gene_lookup_orf
 
 if (params$features == "crispr") {
   gene_lookup <- gene_lookup_crispr
-} 
+}
 ```
 
 Get data splits
@@ -93,7 +93,7 @@ data_splits <-
       select(-y) %>%
       inner_join(gene_lookup) %>%
       inner_join(compound_lookup)
-      
+
   })
 ```
 
@@ -119,7 +119,7 @@ data_splits %>%
 Number of connections in total, across data splits (this should be the same as above)
 
 ```{r}
-n_all <- 
+n_all <-
   data_splits %>%
   bind_rows() %>%
   select(-split_set, -is_connected, -broad_sample_compound) %>%
@@ -132,17 +132,17 @@ n_all
 Number of connections in total, only TRUE connections
 
 ```{r}
-curcon <- 
+curcon <-
   data_splits %>%
   bind_rows() %>%
   select(-split_set, -broad_sample_compound) %>%
   filter(is_connected) %>%
   distinct() %>%
-  select(pert_id_compound, 
-         matches("broad_sample_orf|broad_sample_crispr"), 
+  select(pert_id_compound,
+         matches("broad_sample_orf|broad_sample_crispr"),
          is_connected, pert_iname_compound, gene)
 
-n_all_connected <- 
+n_all_connected <-
   curcon %>%
   count(name = "n_all_connected")
 
@@ -152,7 +152,7 @@ n_all_connected
 Now consider only the distinct gene-compound connections
 
 ```{r}
-gene_compound <-  
+gene_compound <-
   data_splits %>%
   bind_rows() %>%
   distinct(pert_iname_compound, gene, split_set, is_connected)
@@ -161,7 +161,7 @@ gene_compound <-
 Number of connections in total
 
 ```{r}
-n_gene_compound <- 
+n_gene_compound <-
   gene_compound %>%
   count(name = "n_gene_compound")
 
@@ -171,7 +171,7 @@ n_gene_compound
 Number of connections in total
 
 ```{r}
-n_gene_compound_across_splits <- 
+n_gene_compound_across_splits <-
   gene_compound %>%
   distinct(pert_iname_compound, gene, is_connected) %>%
   count(name = "n_gene_compound_across_splits")
@@ -185,11 +185,11 @@ This should be equal to number of genes x number of compounds
 tibble(n_genes_x_compounds = 160 * 302)
 ```
 
-How many of these are connected? If the splits overlap, this number will be 
+How many of these are connected? If the splits overlap, this number will be
 higher than the actual number of true connections.
 
 ```{r}
-n_gene_compound_connected <- 
+n_gene_compound_connected <-
   gene_compound %>%
   filter(is_connected) %>%
   count(name = "n_gene_compound_connected")
@@ -200,7 +200,7 @@ n_gene_compound_connected
 Ignore splits and recompute
 
 ```{r}
-n_gene_compound_across_splits_connected <- 
+n_gene_compound_across_splits_connected <-
   gene_compound %>%
   filter(is_connected) %>%
   distinct(pert_iname_compound, gene) %>%
@@ -214,7 +214,7 @@ n_gene_compound_across_splits_connected
 How many compounds involved total?
 
 ```{r}
-n_compounds <- 
+n_compounds <-
   gene_compound %>%
   distinct(pert_iname_compound) %>%
   count(name = "n_compounds")
@@ -225,7 +225,7 @@ n_compounds
 How many compounds involved in connections?
 
 ```{r}
-n_connected_compounds <- 
+n_connected_compounds <-
   gene_compound %>%
   filter(is_connected) %>%
   distinct(pert_iname_compound) %>%
@@ -237,7 +237,7 @@ n_connected_compounds
 How many genes involved in total?
 
 ```{r}
-n_genes <- 
+n_genes <-
   gene_compound %>%
   distinct(gene) %>%
   count(name = "n_genes")
@@ -248,7 +248,7 @@ n_genes
 How many genes involved in connections?
 
 ```{r}
-n_connected_genes <- 
+n_connected_genes <-
   gene_compound %>%
   filter(is_connected) %>%
   distinct(gene) %>%
@@ -264,30 +264,30 @@ n_connected_genes
 How many times is a gene-compound pair present in train and test?
 
 ```{r}
-gene_compound_splits <- 
-  gene_compound %>% 
-  group_by(pert_iname_compound, gene, is_connected, split_set) %>% 
-  tally() %>% 
-  pivot_wider(names_from = "split_set", values_from = "n", values_fill = 0) %>% 
+gene_compound_splits <-
+  gene_compound %>%
+  group_by(pert_iname_compound, gene, is_connected, split_set) %>%
+  tally() %>%
+  pivot_wider(names_from = "split_set", values_from = "n", values_fill = 0) %>%
   arrange(train, test, val) %>%
   rename(connected = is_connected) %>%
   mutate(leak = factor(train > 0 & test > 0, c(FALSE, TRUE)))
 #  mutate(leak = factor((val > 0 | train > 0) & test > 0, c(FALSE, TRUE)))
 
-n_leak_gene_compound <- 
+n_leak_gene_compound <-
   gene_compound_splits %>%
   group_by(connected, leak, .drop = FALSE) %>%
   tally()
 
 n_leak_gene_compound
 
-n_leak_gene_compound_wide <- 
-  n_leak_gene_compound %>% 
+n_leak_gene_compound_wide <-
+  n_leak_gene_compound %>%
   mutate(connected = paste("connected", connected, sep = "_")) %>%
   mutate(leak = paste("leak", leak, sep = "_")) %>%
   unite("connected_leak", all_of(c("connected", "leak")), sep = "_") %>%
-  pivot_wider(names_from = "connected_leak", 
-              values_from = "n", 
+  pivot_wider(names_from = "connected_leak",
+              values_from = "n",
               names_prefix = "n_gene_compound_")
 ```
 
@@ -296,30 +296,30 @@ n_leak_gene_compound_wide <-
 How many times is a compound present in train and test?
 
 ```{r}
-compound_splits <- 
-  gene_compound %>% 
-  group_by(pert_iname_compound, is_connected, split_set) %>% 
-  tally() %>% 
-  pivot_wider(names_from = "split_set", values_from = "n", values_fill = 0) %>% 
+compound_splits <-
+  gene_compound %>%
+  group_by(pert_iname_compound, is_connected, split_set) %>%
+  tally() %>%
+  pivot_wider(names_from = "split_set", values_from = "n", values_fill = 0) %>%
   arrange(train, test, val) %>%
   rename(connected = is_connected) %>%
   mutate(leak = factor(train > 0 & test > 0, c(FALSE, TRUE)))
 #  mutate(leak = factor((val > 0 | train > 0) & test > 0, c(FALSE, TRUE)))
 
-n_leak_compound <- 
+n_leak_compound <-
   compound_splits %>%
   group_by(connected, leak, .drop = FALSE) %>%
   tally()
 
 n_leak_compound
 
-n_leak_compound_wide <- 
-  n_leak_compound %>% 
+n_leak_compound_wide <-
+  n_leak_compound %>%
   mutate(connected = paste("connected", connected, sep = "_")) %>%
   mutate(leak = paste("leak", leak, sep = "_")) %>%
   unite("connected_leak", all_of(c("connected", "leak")), sep = "_") %>%
-  pivot_wider(names_from = "connected_leak", 
-              values_from = "n", 
+  pivot_wider(names_from = "connected_leak",
+              values_from = "n",
               names_prefix = "n_compound_")
 ```
 
@@ -328,34 +328,34 @@ n_leak_compound_wide <-
 How many times is a gene present in train and test?
 
 ```{r}
-gene_splits <- 
-  gene_compound %>% 
-  group_by(gene, is_connected, split_set) %>% 
-  tally() %>% 
-  pivot_wider(names_from = "split_set", values_from = "n", values_fill = 0) %>% 
+gene_splits <-
+  gene_compound %>%
+  group_by(gene, is_connected, split_set) %>%
+  tally() %>%
+  pivot_wider(names_from = "split_set", values_from = "n", values_fill = 0) %>%
   arrange(train, test, val) %>%
   rename(connected = is_connected) %>%
   mutate(leak = factor(train > 0 & test > 0, c(FALSE, TRUE)))
 #  mutate(leak = factor((val > 0 | train > 0) & test > 0, c(FALSE, TRUE)))
 
-n_leak_gene <- 
+n_leak_gene <-
   gene_splits %>%
   group_by(connected, leak, .drop = FALSE) %>%
   tally()
 
 n_leak_gene
 
-n_leak_gene_wide <- 
-  n_leak_gene %>% 
+n_leak_gene_wide <-
+  n_leak_gene %>%
   mutate(connected = paste("connected", connected, sep = "_")) %>%
   mutate(leak = paste("leak", leak, sep = "_")) %>%
   unite("connected_leak", all_of(c("connected", "leak")), sep = "_") %>%
-  pivot_wider(names_from = "connected_leak", 
-              values_from = "n", 
+  pivot_wider(names_from = "connected_leak",
+              values_from = "n",
               names_prefix = "n_gene_")
 ```
 
-# Save 
+# Save
 
 ## Save splits with gene-compound annotations
 
@@ -367,7 +367,7 @@ gene_compound %>%
 ## Save split inspections
 
 ```{r}
-splits_report <- 
+splits_report <-
   bind_cols(
   n_all,
   n_all_connected,
@@ -382,12 +382,12 @@ splits_report <-
   n_leak_gene_compound_wide,
   n_leak_gene_wide,
   n_leak_compound_wide
-) %>% 
+) %>%
   pivot_longer(
-    everything(), 
-    names_to = "count", 
+    everything(),
+    names_to = "count",
     values_to = as.character(glue("{formulation}__{features}"))
-    ) 
+    )
 
 splits_report
 
@@ -398,21 +398,21 @@ splits_report %>%
 Save as a matrix that can be loaded in https://software.broadinstitute.org/morpheus/
 
 | Is connected | In training set | `connected_train` value |
-| :----------- | :-------------- | :---------------------- | 
+| :----------- | :-------------- | :---------------------- |
 | False        | False           | 0                       |
 | False        | True            | 1                       |
 | True         | False           | 2                       |
 | True         | True            | 3                       |
 
 ```{r}
-gene_compound_matrix_long <- 
-  gene_compound_splits %>% 
+gene_compound_matrix_long <-
+  gene_compound_splits %>%
   ungroup() %>%
-  select(pert_iname_compound, gene, connected, train) %>% 
-  mutate(connected_train = 2 * connected + (train > 0)) %>% 
+  select(pert_iname_compound, gene, connected, train) %>%
+  mutate(connected_train = 2 * connected + (train > 0)) %>%
   arrange(pert_iname_compound, gene)
 
-gene_compound_matrix <- 
+gene_compound_matrix <-
   gene_compound_matrix_long  %>%
   select(-connected, -train) %>%
   pivot_wider(names_from = "gene", values_from = "connected_train")
@@ -436,7 +436,7 @@ plot_gene_compound_matrix <-
         alpha = train == 1
       )) +
       scale_fill_manual(values = c("#b2df8a", "#1f78b4"), guide = FALSE)
-    
+
     if (show_train_test) {
       p <- p +
         scale_alpha_manual(values = c(0.7, 1), guide = FALSE)
@@ -444,38 +444,38 @@ plot_gene_compound_matrix <-
       p <- p +
         scale_alpha_manual(values = c(1, 1), guide = FALSE)
     }
-    
+
     if (show_borders) {
       p <- p +
         geom_tile(color = "#ffffff")
     } else {
       p <- p +
         geom_tile()
-      
+
     }
-    
+
     p <- p +
       theme_void() +
       coord_equal()
-    
+
     p
   }
 ```
 
 
 ```{r}
-p <- 
+p <-
   gene_compound_matrix_long %>%
   plot_gene_compound_matrix(show_train_test = TRUE)
 
-ggsave(glue("output/gene_compound_matrix__{formulation}__{features}.png"), 
+ggsave(glue("output/gene_compound_matrix__{formulation}__{features}.png"),
        p, height = 4)
 
-p <- 
+p <-
   gene_compound_matrix_long %>%
   plot_gene_compound_matrix(show_train_test = FALSE)
 
-ggsave(glue("output/gene_compound_matrix__{formulation}__{features}_notraintest.png"), 
+ggsave(glue("output/gene_compound_matrix__{formulation}__{features}_notraintest.png"),
        p, height = 4)
 
 ```
@@ -484,12 +484,12 @@ ggsave(glue("output/gene_compound_matrix__{formulation}__{features}_notraintest.
 ```{r}
 set.seed(42)
 
-pert_iname_compound_subset <- 
+pert_iname_compound_subset <-
   gene_compound_matrix_long %>%
   distinct(pert_iname_compound) %>%
   sample_frac(.2)
 
-gene_subset <- 
+gene_subset <-
   gene_compound_matrix_long %>%
   distinct(gene) %>%
   sample_frac(.2)
@@ -497,22 +497,22 @@ gene_subset <-
 
 
 ```{r}
-p <- 
-  gene_compound_matrix_long %>% 
+p <-
+  gene_compound_matrix_long %>%
   inner_join(pert_iname_compound_subset) %>%
   inner_join(gene_subset) %>%
   plot_gene_compound_matrix(show_train_test = TRUE, show_borders = TRUE)
 
-ggsave(glue("output/gene_compound_matrix_sampled__{formulation}__{features}.png"), 
+ggsave(glue("output/gene_compound_matrix_sampled__{formulation}__{features}.png"),
        p, height = 4)
 
-p <- 
-  gene_compound_matrix_long %>% 
+p <-
+  gene_compound_matrix_long %>%
   inner_join(pert_iname_compound_subset) %>%
   inner_join(gene_subset) %>%
   plot_gene_compound_matrix(show_train_test = FALSE, show_borders = TRUE)
 
-ggsave(glue("output/gene_compound_matrix_sampled__{formulation}__{features}_notraintest.png"), 
+ggsave(glue("output/gene_compound_matrix_sampled__{formulation}__{features}_notraintest.png"),
        p, height = 4)
 
 ```
@@ -522,7 +522,7 @@ ggsave(glue("output/gene_compound_matrix_sampled__{formulation}__{features}_notr
 ```{r}
 prediction_df <-
   read_csv(
-    glue("../1.analysis/final_binary_predictions/{classifier}__{formulation}__{features}.csv"), 
+    glue("../1.analysis/final_binary_predictions/{classifier}__{formulation}__{features}.csv"),
     col_types = cols()) %>%
   process_metadata()
 ```
@@ -531,7 +531,7 @@ Verify that the predictions are made on the test set
 
 ```{r}
 test_diff_pred <-
-  anti_join(data_splits$test %>% select(matches("^broad_sample")), 
+  anti_join(data_splits$test %>% select(matches("^broad_sample")),
           prediction_df %>% select(matches("^broad_sample")))
 
 pred_diff_test <-
@@ -539,10 +539,10 @@ pred_diff_test <-
           data_splits$test %>% select(matches("^broad_sample")))
 ```
 ```{r}
-n_test_diff_pred <- 
+n_test_diff_pred <-
   count(test_diff_pred, name = "n_test_diff_pred")
 
-n_pred_diff_test <- 
+n_pred_diff_test <-
   count(pred_diff_test, name = "n_pred_diff_test")
 
 n_test_diff_pred
@@ -557,15 +557,15 @@ slice_sample(pred_diff_test, n = 10)
 ```
 
 ```{r}
-predictions_report <- 
+predictions_report <-
   bind_cols(
   n_test_diff_pred,
-  n_pred_diff_test) %>% 
+  n_pred_diff_test) %>%
   pivot_longer(
-    everything(), 
-    names_to = "count", 
+    everything(),
+    names_to = "count",
     values_to = as.character(glue("{formulation}__{features}"))
-    )   
+    )
 
 predictions_report %>%
   write_csv(glue("output/predictions_report__{formulation}__{features}.csv"))

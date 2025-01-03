@@ -30,7 +30,7 @@ def parse_configs(split_folder, split, feature_set, nhead, nhid, nlayers, learni
                 'permute': permute,
                 'init_range': init_range,
                 'stop_cutoff': 200}
-    
+
     hash_id = hash_conf(config)
     config['hash_id'] = hash_id
     write_config(config, output_dir)
@@ -65,13 +65,13 @@ def main():
                         help='random seed to generate hyperparams')
 
     args = parser.parse_args()
-    
-    if args.permute:    
+
+    if args.permute:
         print("permuting...")
         parse_configs(args.split_folder, args.split, args.feature_set, args.nhead, args.nhid, args.nlayers, args.learning_rate, args.dropout, True, args.output_dir, seed=42)
     else:
         parse_configs(args.split_folder, args.split, args.feature_set, args.nhead, args.nhid, args.nlayers, args.learning_rate, args.dropout, False, args.output_dir, seed=42)
 
-        
+
 if __name__ == "__main__":
     main()

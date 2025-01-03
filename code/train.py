@@ -24,7 +24,7 @@ class Trainer():
         num_batches = 0
         for X, y in dataloader:
             X, y = X.to(self.device), y.to(self.device)
-            
+
             # Compute prediction and loss
             logits = self.model(X)
             loss = self.loss_fn(logits, y)
@@ -47,7 +47,7 @@ class Trainer():
 
     def main_loop(self, train_loader, val_loader, epochs, criteria, model_path, stop_cutoff, no_save=False):
         '''Run the training loop for several epochs'''
-        
+
         if not no_save:
             Path(model_path).parent.mkdir(parents=True, exist_ok=True)
 
